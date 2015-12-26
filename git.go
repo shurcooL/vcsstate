@@ -37,7 +37,22 @@ func (this *gitVcs) GetStash() string {
 }
 
 func (this *gitVcs) GetRemote() string {
-	cmd := exec.Command("git", "ls-remote", "--get-url", "origin")
+	/*
+		Not specifying "origin" has a problem with rego repo:
+
+		rego $ git-branches -remote
+		| Branch                         | Remote        | Behind | Ahead |
+		|--------------------------------|---------------|-------:|:------|
+		| master                         | origin/master |      0 | 0     |
+		| **remove-obsolete-workaround** |               |        |       |
+		rego $ gostatus -v
+		b #  sourcegraph.com/sqs/rego/...
+		rego $ git ls-remote --get-url origin
+		https://github.com/sqs/rego
+		rego $ git ls-remote --get-url
+		https://github.com/shurcooL/rego
+	*/
+	cmd := exec.Command("git", "ls-remote", "--get-url")
 	cmd.Dir = this.rootPath
 
 	if out, err := cmd.Output(); err == nil {
