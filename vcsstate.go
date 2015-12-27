@@ -36,7 +36,7 @@ type VCS interface {
 	RemoteRevision(dir string) (string, error)
 }
 
-// NewVCS creates a repository using VCS type.
+// NewVCS creates a VCS with same type as vcs.
 func NewVCS(vcs *vcs.Cmd) (VCS, error) {
 	switch vcs.Cmd {
 	case "git":
@@ -55,7 +55,7 @@ type RemoteVCS interface {
 	RemoteRevision(remoteURL string) (string, error)
 }
 
-// NewRemoteVCS creates a remote repository using VCS type.
+// NewRemoteVCS creates a RemoteVCS with same type as vcs.
 func NewRemoteVCS(vcs *vcs.Cmd) (RemoteVCS, error) {
 	switch vcs.Cmd {
 	case "git":
