@@ -25,22 +25,6 @@ func (hg) Status(dir string) (string, error) {
 	return string(out), nil
 }
 
-func (hg) Stash(dir string) (string, error) {
-	// TODO: Does Mercurial have stashes? Figure it out, add support, etc.
-	return "", nil
-}
-
-func (hg) RemoteURL(dir string) (string, error) {
-	cmd := exec.Command("hg", "paths", "default")
-	cmd.Dir = dir
-
-	out, err := cmd.Output()
-	if err != nil {
-		return "", err
-	}
-	return trim.LastNewline(string(out)), nil
-}
-
 func (hg) LocalBranch(dir string) (string, error) {
 	cmd := exec.Command("hg", "branch")
 	cmd.Dir = dir
@@ -68,6 +52,22 @@ func (v hg) LocalRevision(dir string) (string, error) {
 		return "", fmt.Errorf("output length %v is shorter than %v", len(out), hgRevisionLength)
 	}
 	return string(out[:hgRevisionLength]), nil
+}
+
+func (hg) Stash(dir string) (string, error) {
+	// TODO: Does Mercurial have stashes? Figure it out, add support, etc.
+	return "", nil
+}
+
+func (hg) RemoteURL(dir string) (string, error) {
+	cmd := exec.Command("hg", "paths", "default")
+	cmd.Dir = dir
+
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return trim.LastNewline(string(out)), nil
 }
 
 func (v hg) RemoteRevision(dir string) (string, error) {

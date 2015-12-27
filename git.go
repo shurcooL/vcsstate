@@ -26,6 +26,35 @@ func (git) Status(dir string) (string, error) {
 	return string(out), nil
 }
 
+func (git) LocalBranch(dir string) (string, error) {
+	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
+	cmd.Dir = dir
+
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	// Since rev-parse is considered porcelain and may change, need to error-check its output.
+	return trim.LastNewline(string(out)), nil
+}
+
+// gitRevisionLength is the length of a git revision hash.
+const gitRevisionLength = 40
+
+func (v git) LocalRevision(dir string) (string, error) {
+	cmd := exec.Command("git", "rev-parse", v.defaultBranch())
+	cmd.Dir = dir
+
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	if len(out) < gitRevisionLength {
+		return "", fmt.Errorf("output length %v is shorter than %v", len(out), gitRevisionLength)
+	}
+	return string(out[:gitRevisionLength]), nil
+}
+
 func (git) Stash(dir string) (string, error) {
 	cmd := exec.Command("git", "stash", "list")
 	cmd.Dir = dir
@@ -66,35 +95,6 @@ func (git) RemoteURL(dir string) (string, error) {
 		return "", err
 	}
 	return trim.LastNewline(string(out)), nil
-}
-
-func (git) LocalBranch(dir string) (string, error) {
-	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
-	cmd.Dir = dir
-
-	out, err := cmd.Output()
-	if err != nil {
-		return "", err
-	}
-	// Since rev-parse is considered porcelain and may change, need to error-check its output.
-	return trim.LastNewline(string(out)), nil
-}
-
-// gitRevisionLength is the length of a git revision hash.
-const gitRevisionLength = 40
-
-func (v git) LocalRevision(dir string) (string, error) {
-	cmd := exec.Command("git", "rev-parse", v.defaultBranch())
-	cmd.Dir = dir
-
-	out, err := cmd.Output()
-	if err != nil {
-		return "", err
-	}
-	if len(out) < gitRevisionLength {
-		return "", fmt.Errorf("output length %v is shorter than %v", len(out), gitRevisionLength)
-	}
-	return string(out[:gitRevisionLength]), nil
 }
 
 func (v git) RemoteRevision(dir string) (string, error) {
