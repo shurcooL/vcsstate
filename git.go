@@ -26,7 +26,7 @@ func (git) Status(dir string) (string, error) {
 	return string(out), nil
 }
 
-func (git) LocalBranch(dir string) (string, error) {
+func (git) Branch(dir string) (string, error) {
 	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
 	cmd.Dir = dir
 
@@ -64,6 +64,17 @@ func (git) Stash(dir string) (string, error) {
 		return "", err
 	}
 	return string(out), nil
+}
+
+func (v git) Contains(dir string, revision string) (bool, error) {
+	cmd := exec.Command("git", "branch", "--list", "--contains", revision, v.defaultBranch())
+	cmd.Dir = dir
+
+	out, err := cmd.Output()
+	if err != nil {
+		return false, err
+	}
+	return len(out) >= 2 && trim.LastNewline(string(out[2:])) == v.defaultBranch(), nil
 }
 
 func (git) RemoteURL(dir string) (string, error) {
@@ -114,17 +125,6 @@ func (v git) RemoteRevision(dir string) (string, error) {
 		return "", fmt.Errorf("output length %v is shorter than %v", len(out), gitRevisionLength)
 	}
 	return string(out[:gitRevisionLength]), nil
-}
-
-func (v git) IsContained(dir string, revision string) (bool, error) {
-	cmd := exec.Command("git", "branch", "--list", "--contains", revision, v.defaultBranch())
-	cmd.Dir = dir
-
-	out, err := cmd.Output()
-	if err != nil {
-		return false, err
-	}
-	return len(out) >= 2 && trim.LastNewline(string(out[2:])) == v.defaultBranch(), nil
 }
 
 func (git) defaultBranch() string {
