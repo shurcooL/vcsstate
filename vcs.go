@@ -1,109 +1,60 @@
-// Package vcs allows getting status of a repo under vcs.
-package vcs
+// Package vcsstate allows getting the state of version control system repositories.
+package vcsstate
 
-import "os/exec"
+import "golang.org/x/tools/go/vcs"
 
-type Type uint8
+// VCS describes how to use a version control system to get the status of a repository
+// rooted at dir.
+//
+// TODO: Better/more consistent documentation for the methods.
+type VCS interface {
+	DefaultBranch() string // Get default branch name for this vcs.
 
-const (
-	Git Type = iota
-	Hg
-)
+	Status(dir string) (string, error) // Returns empty string if no outstanding status.
+	Stash(dir string) (string, error)  // Returns empty string if no stash.
 
-// VcsType returns a vcsType string compatible with sourcegraph.com/sourcegraph/go-vcs notation.
-func (t Type) VcsType() (vcsType string) {
-	switch t {
-	case Git:
-		return "git"
-	case Hg:
-		return "hg"
+	RemoteURL(dir string) (string, error) // Get primary remote URL.
+
+	LocalBranch(dir string) (string, error) // Get currently checked out local branch name.
+
+	LocalRevision(dir string) (string, error)  // Get current local revision of default branch.
+	RemoteRevision(dir string) (string, error) // Get latest remote revision of default branch.
+
+	// Returns true if given commit is contained in the local default branch.
+	//
+	// TODO: Rename IsContained to a better name.
+	IsContained(dir string, revision string) (bool, error)
+}
+
+// NewVCS creates a repository using vcs type.
+func NewVCS(vcs *vcs.Cmd) VCS {
+	switch vcs.Cmd {
+	case "git":
+		return git{}
+	case "hg":
+		return hg{}
 	default:
-		panic("bad vcs.Type")
+		// TODO: No panic.
+		panic("unsupported *vcs.Cmd type")
 	}
 }
 
-type Vcs interface {
-	RootPath() string // Returns the full path to the root of the repo.
-	Type() Type       // Returns the type of vcs implementation.
-
-	GetStatus() string // Returns empty string if no outstanding status.
-	GetStash() string  // Returns empty string if no stash.
-
-	GetRemote() string // Get primary remote repository url.
-
-	GetDefaultBranch() string // Get default branch name for this vcs.
-	GetLocalBranch() string   // Get currently checked out local branch name.
-
-	GetLocalRev() string  // Get current local revision of default branch.
-	GetRemoteRev() string // Get latest remote revision of default branch.
-
-	// Returns true if given commit is contained in the default local branch.
-	IsContained(rev string) bool
+// RemoteVCS describes how to use a version control system to get the remote status of a repository
+// with remoteURL.
+type RemoteVCS interface {
+	RemoteRevision(remoteURL string) (string, error) // Get latest remote revision of default branch.
 }
 
-type commonVcs struct {
-	rootPath string
-}
-
-func (this *commonVcs) RootPath() string {
-	return this.rootPath
-}
-
-// New returns a new Vcs if path is under version control, otherwise nil.
-// It should be a valid path.
-func New(path string) Vcs {
-	// TODO: Try to figure out vcs provider with a more constant-time operation.
-	// TODO: Potentially check in parallel.
-	for _, vcsProvider := range vcsProviders {
-		if vcs := vcsProvider(path); vcs != nil {
-			return vcs
-		}
-	}
-
-	return nil
-}
-
-// Experimental, NewFromType returns a Vcs repository of the specified type without a local representation.
-// Operations that require a local repository will fail.
-func NewFromType(t Type) Vcs {
-	switch t {
-	case Git:
-		return &gitVcs{}
-	case Hg:
-		return &hgVcs{}
+// NewRemoteVCS creates a remote repository using vcs type.
+func NewRemoteVCS(vcs *vcs.Cmd) RemoteVCS {
+	switch vcs.Cmd {
+	case "git":
+		return remoteGit{}
+	case "hg":
+		// TODO: No panic.
+		panic("not implemented")
 	default:
-		panic("bad vcs.Type")
-	}
-}
-
-type vcsProvider func(path string) Vcs
-
-var vcsProviders []vcsProvider
-
-func addVcsProvider(s vcsProvider) {
-	vcsProviders = append(vcsProviders, s)
-}
-
-func init() {
-	// As an optimization, add Vcs providers sorted by the most likely first.
-
-	// git.
-	if _, err := exec.LookPath("git"); err == nil {
-		addVcsProvider(func(path string) Vcs {
-			if isRepo, rootPath := getGitRepoRoot(path); isRepo {
-				return &gitVcs{commonVcs{rootPath: rootPath}}
-			}
-			return nil
-		})
-	}
-
-	// hg.
-	if _, err := exec.LookPath("hg"); err == nil {
-		addVcsProvider(func(path string) Vcs {
-			if isRepo, rootPath := getHgRepoRoot(path); isRepo {
-				return &hgVcs{commonVcs{rootPath: rootPath}}
-			}
-			return nil
-		})
+		// TODO: No panic.
+		panic("unsupported *vcs.Cmd type")
 	}
 }

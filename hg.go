@@ -1,101 +1,94 @@
-package vcs
+package vcsstate
 
 import (
+	"fmt"
 	"os/exec"
+	"strings"
 
-	. "github.com/shurcooL/go/gists/gist5258650"
-	trim "github.com/shurcooL/go/trim"
+	"github.com/shurcooL/go/trim"
 )
 
-func getHgRepoRoot(path string) (isHgRepo bool, rootPath string) {
-	cmd := exec.Command("hg", "root")
-	cmd.Dir = path
+type hg struct{}
 
-	if out, err := cmd.Output(); err == nil {
-		return true, trim.LastNewline(string(out))
-	} else {
-		return false, ""
-	}
+func (v hg) DefaultBranch() string {
+	return v.defaultBranch()
 }
 
-type hgVcs struct {
-	commonVcs
-}
-
-func (this *hgVcs) Type() Type { return Hg }
-
-func (this *hgVcs) GetStatus() string {
+func (hg) Status(dir string) (string, error) {
 	cmd := exec.Command("hg", "status")
-	cmd.Dir = this.rootPath
+	cmd.Dir = dir
 
-	if out, err := cmd.Output(); err == nil {
-		return string(out)
-	} else {
-		return ""
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
 	}
+	return string(out), nil
 }
 
-func (this *hgVcs) GetStash() string {
+func (hg) Stash(dir string) (string, error) {
 	// TODO: Does Mercurial have stashes? Figure it out, add support, etc.
-	return ""
+	return "", nil
 }
 
-func (this *hgVcs) GetRemote() string {
+func (hg) RemoteURL(dir string) (string, error) {
 	cmd := exec.Command("hg", "paths", "default")
-	cmd.Dir = this.rootPath
+	cmd.Dir = dir
 
-	if out, err := cmd.Output(); err == nil {
-		return trim.LastNewline(string(out))
-	} else {
-		return ""
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
 	}
+	return trim.LastNewline(string(out)), nil
 }
 
-func (this *hgVcs) GetDefaultBranch() string {
-	return "default"
-}
-
-func (this *hgVcs) GetLocalBranch() string {
+func (hg) LocalBranch(dir string) (string, error) {
 	cmd := exec.Command("hg", "branch")
-	cmd.Dir = this.rootPath
+	cmd.Dir = dir
 
-	if out, err := cmd.Output(); err == nil {
-		return trim.LastNewline(string(out))
-	} else {
-		return ""
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
 	}
+	return trim.LastNewline(string(out)), nil
 }
 
-// Length of a Mercurial revision hash.
+// hgRevisionLength is the length of a Mercurial revision hash.
 const hgRevisionLength = 40
 
-func (this *hgVcs) GetLocalRev() string {
-	// Alternative: hg parent --template '{node}'
-	cmd := exec.Command("hg", "--debug", "identify", "-i", "--rev", this.GetDefaultBranch())
-	cmd.Dir = this.rootPath
+func (v hg) LocalRevision(dir string) (string, error) {
+	// Alternative: hg parent --template '{node}'.
+	cmd := exec.Command("hg", "--debug", "identify", "-i", "--rev", v.defaultBranch())
+	cmd.Dir = dir
 
-	if out, err := cmd.Output(); err == nil && len(out) >= hgRevisionLength {
-		return string(out[:hgRevisionLength])
-	} else {
-		return ""
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
 	}
+	if len(out) < hgRevisionLength {
+		return "", fmt.Errorf("output length %v is shorter than %v", len(out), hgRevisionLength)
+	}
+	return string(out[:hgRevisionLength]), nil
 }
 
-func (this *hgVcs) GetRemoteRev() string {
+func (v hg) RemoteRevision(dir string) (string, error) {
 	// TODO: Make this more robust and proper, etc.
-	cmd := exec.Command("hg", "--debug", "identify", "-i", "--rev", this.GetDefaultBranch(), "default")
-	cmd.Dir = this.rootPath
+	cmd := exec.Command("hg", "--debug", "identify", "-i", "--rev", v.defaultBranch(), "default")
+	cmd.Dir = dir
 
-	if out, err := cmd.Output(); err == nil {
-		// Get the last line of output.
-		if lines := GetLines(trim.LastNewline(string(out))); len(lines) > 0 {
-			return lines[len(lines)-1]
-		}
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
 	}
-	return ""
+	// Get the last line of output.
+	lines := strings.Split(trim.LastNewline(string(out)), "\n") // Will always have at least one element.
+	return lines[len(lines)-1], nil
 }
 
-func (this *hgVcs) IsContained(rev string) bool {
-	// TODO.
-	return false
+func (hg) IsContained(dir string, revision string) (bool, error) {
+	// TODO: Implement this. Currently not implemented, so go with a conservative default value.
+	return false, nil
+}
+
+func (*hg) defaultBranch() string {
+	return "default"
 }

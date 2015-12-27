@@ -1,6 +1,7 @@
-package vcs
+package vcsstate
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 
@@ -8,35 +9,35 @@ import (
 	"github.com/shurcooL/go/trim"
 )
 
-type gitVcs struct {
-	commonVcs
+type git struct{}
+
+func (v git) DefaultBranch() string {
+	return v.defaultBranch()
 }
 
-func (this *gitVcs) Type() Type { return Git }
-
-func (this *gitVcs) GetStatus() string {
+func (git) Status(dir string) (string, error) {
 	cmd := exec.Command("git", "status", "--porcelain")
-	cmd.Dir = this.rootPath
+	cmd.Dir = dir
 
-	if out, err := cmd.Output(); err == nil {
-		return string(out)
-	} else {
-		return ""
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
 	}
+	return string(out), nil
 }
 
-func (this *gitVcs) GetStash() string {
+func (git) Stash(dir string) (string, error) {
 	cmd := exec.Command("git", "stash", "list")
-	cmd.Dir = this.rootPath
+	cmd.Dir = dir
 
-	if out, err := cmd.Output(); err == nil {
-		return string(out)
-	} else {
-		return ""
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
 	}
+	return string(out), nil
 }
 
-func (this *gitVcs) GetRemote() string {
+func (git) RemoteURL(dir string) (string, error) {
 	/*
 		Not specifying "origin" has a problem with rego repo:
 
@@ -58,83 +59,74 @@ func (this *gitVcs) GetRemote() string {
 		but I can't remember which. :/ So revert this for now until I can recall, then document it!
 	*/
 	cmd := exec.Command("git", "ls-remote", "--get-url", "origin")
-	cmd.Dir = this.rootPath
+	cmd.Dir = dir
 
-	if out, err := cmd.Output(); err == nil {
-		return trim.LastNewline(string(out))
-	} else {
-		return ""
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
 	}
+	return trim.LastNewline(string(out)), nil
 }
 
-func (this *gitVcs) GetDefaultBranch() string {
-	return "master"
-}
-
-func (this *gitVcs) GetLocalBranch() string {
+func (git) LocalBranch(dir string) (string, error) {
 	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
-	cmd.Dir = this.rootPath
+	cmd.Dir = dir
 
-	if out, err := cmd.Output(); err == nil {
-		// Since rev-parse is considered porcelain and may change, need to error-check its output.
-		return trim.LastNewline(string(out))
-	} else {
-		return ""
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
 	}
+	// Since rev-parse is considered porcelain and may change, need to error-check its output.
+	return trim.LastNewline(string(out)), nil
 }
 
-// Length of a git revision hash.
+// gitRevisionLength is the length of a git revision hash.
 const gitRevisionLength = 40
 
-func (this *gitVcs) GetLocalRev() string {
-	cmd := exec.Command("git", "rev-parse", this.GetDefaultBranch())
-	cmd.Dir = this.rootPath
+func (v git) LocalRevision(dir string) (string, error) {
+	cmd := exec.Command("git", "rev-parse", v.defaultBranch())
+	cmd.Dir = dir
 
-	if out, err := cmd.Output(); err == nil && len(out) >= gitRevisionLength {
-		return string(out[:gitRevisionLength])
-	} else {
-		return ""
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
 	}
+	if len(out) < gitRevisionLength {
+		return "", fmt.Errorf("output length %v is shorter than %v", len(out), gitRevisionLength)
+	}
+	return string(out[:gitRevisionLength]), nil
 }
 
-func (this *gitVcs) GetRemoteRev() string {
+func (v git) RemoteRevision(dir string) (string, error) {
 	// true here is not a boolean value, but a command /bin/true that will make git think it asked for a password,
 	// and prevent potential interactive password prompts (opting to return failure exit code instead).
-	cmd := exec.Command("git", "-c", "core.askpass=true", "ls-remote", "--heads", "origin", this.GetDefaultBranch())
-	cmd.Dir = this.rootPath
+	cmd := exec.Command("git", "-c", "core.askpass=true", "ls-remote", "--heads", "origin", v.defaultBranch())
+	cmd.Dir = dir
 	env := osutil.Environ(os.Environ())
-	env.Set("GIT_SSH_COMMAND", "ssh -o StrictHostKeyChecking=yes") // Default for StrictHostKeyChecking is "ask", which we don't want since this is non-interactive and we prefer to fail than block asking for user input.
+	env.Set("GIT_SSH_COMMAND", "ssh -o StrictHostKeyChecking=yes") // Default for StrictHostKeyChecking is "ask", which we don't want since v is non-interactive and we prefer to fail than block asking for user input.
 	cmd.Env = env
 
-	if out, err := cmd.Output(); err == nil && len(out) >= gitRevisionLength {
-		return string(out[:gitRevisionLength])
-	} else {
-		return ""
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
 	}
+	if len(out) < gitRevisionLength {
+		return "", fmt.Errorf("output length %v is shorter than %v", len(out), gitRevisionLength)
+	}
+	return string(out[:gitRevisionLength]), nil
 }
 
-func (this *gitVcs) IsContained(rev string) bool {
-	cmd := exec.Command("git", "branch", "--list", "--contains", rev, this.GetDefaultBranch())
-	cmd.Dir = this.rootPath
+func (v git) IsContained(dir string, revision string) (bool, error) {
+	cmd := exec.Command("git", "branch", "--list", "--contains", revision, v.defaultBranch())
+	cmd.Dir = dir
 
-	if out, err := cmd.Output(); err == nil {
-		if len(out) >= 2 && trim.LastNewline(string(out[2:])) == this.GetDefaultBranch() {
-			return true
-		}
+	out, err := cmd.Output()
+	if err != nil {
+		return false, err
 	}
-	return false
+	return len(out) >= 2 && trim.LastNewline(string(out[2:])) == v.defaultBranch(), nil
 }
 
-// ---
-
-func getGitRepoRoot(path string) (isGitRepo bool, rootPath string) {
-	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
-	cmd.Dir = path
-
-	if out, err := cmd.Output(); err == nil {
-		// Since rev-parse is considered porcelain and may change, need to error-check its output
-		return true, trim.LastNewline(string(out))
-	} else {
-		return false, ""
-	}
+func (git) defaultBranch() string {
+	return "master"
 }
