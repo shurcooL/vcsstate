@@ -51,8 +51,13 @@ func (this *gitVcs) GetRemote() string {
 		https://github.com/sqs/rego
 		rego $ git ls-remote --get-url
 		https://github.com/shurcooL/rego
+
+		It's likely a rare edge case because the checked out branch *used to* have another remote, but still.
+
+		I forgot what my motivation for trying to remove it was... It helped in some other situation,
+		but I can't remember which. :/ So revert this for now until I can recall, then document it!
 	*/
-	cmd := exec.Command("git", "ls-remote", "--get-url")
+	cmd := exec.Command("git", "ls-remote", "--get-url", "origin")
 	cmd.Dir = this.rootPath
 
 	if out, err := cmd.Output(); err == nil {
