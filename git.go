@@ -71,12 +71,11 @@ func (v git) Contains(dir string, revision string) (bool, error) {
 	cmd := exec.Command("git", "branch", "--list", "--contains", revision, v.defaultBranch())
 	cmd.Dir = dir
 
-	// TODO: Separate output. Need to be able to inspect stdout without stderr.
-	out, err := cmd.CombinedOutput()
+	stdout, stderr, err := dividedOutput(cmd)
 	switch {
 	case err == nil:
-		return len(out) >= 2 && trim.LastNewline(string(out[2:])) == v.defaultBranch(), nil
-	case err != nil && strings.HasPrefix(string(out), fmt.Sprintf("error: no such commit %s\n", revision)):
+		return len(stdout) >= 2 && trim.LastNewline(string(stdout[2:])) == v.defaultBranch(), nil
+	case err != nil && strings.HasPrefix(string(stderr), fmt.Sprintf("error: no such commit %s\n", revision)):
 		return false, nil
 	default:
 		return false, err

@@ -57,14 +57,13 @@ func (hg) Stash(dir string) (string, error) {
 	cmd := exec.Command("hg", "shelve", "--list")
 	cmd.Dir = dir
 
-	// TODO: Separate output. Need to be able to inspect stdout without stderr.
-	out, err := cmd.CombinedOutput()
+	stdout, stderr, err := dividedOutput(cmd)
 	switch {
-	case err == nil && len(out) != 0:
-		return string(out), nil
-	case err == nil && len(out) == 0:
+	case err == nil && len(stdout) != 0:
+		return string(stdout), nil
+	case err == nil && len(stdout) == 0:
 		return "", nil
-	case err != nil && strings.HasPrefix(string(out), "hg: unknown command 'shelve'\n"): // TODO: Exact match with stderr, no need for prefix since the rest is actually stdout.
+	case err != nil && string(stderr) == "hg: unknown command 'shelve'\n":
 		return "", nil
 	default:
 		return "", err
@@ -75,14 +74,13 @@ func (v hg) Contains(dir string, revision string) (bool, error) {
 	cmd := exec.Command("hg", "log", "--branch", v.defaultBranch(), "--rev", revision)
 	cmd.Dir = dir
 
-	// TODO: Separate output. Need to be able to inspect stdout without stderr.
-	out, err := cmd.CombinedOutput()
+	stdout, stderr, err := dividedOutput(cmd)
 	switch {
-	case err == nil && len(out) != 0:
+	case err == nil && len(stdout) != 0:
 		return true, nil
-	case err == nil && len(out) == 0:
+	case err == nil && len(stdout) == 0:
 		return false, nil
-	case err != nil && string(out) == fmt.Sprintf("abort: unknown revision '%s'!\n", revision):
+	case err != nil && string(stderr) == fmt.Sprintf("abort: unknown revision '%s'!\n", revision):
 		return false, nil
 	default:
 		return false, err
