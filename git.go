@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/shurcooL/go/osutil"
 	"github.com/shurcooL/go/trim"
@@ -70,11 +71,16 @@ func (v git) Contains(dir string, revision string) (bool, error) {
 	cmd := exec.Command("git", "branch", "--list", "--contains", revision, v.defaultBranch())
 	cmd.Dir = dir
 
-	out, err := cmd.Output()
-	if err != nil {
+	// TODO: Separate output. Need to be able to inspect stdout without stderr.
+	out, err := cmd.CombinedOutput()
+	switch {
+	case err == nil:
+		return len(out) >= 2 && trim.LastNewline(string(out[2:])) == v.defaultBranch(), nil
+	case err != nil && strings.HasPrefix(string(out), fmt.Sprintf("error: no such commit %s\n", revision)):
+		return false, nil
+	default:
 		return false, err
 	}
-	return len(out) >= 2 && trim.LastNewline(string(out[2:])) == v.defaultBranch(), nil
 }
 
 func (git) RemoteURL(dir string) (string, error) {
