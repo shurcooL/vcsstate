@@ -77,11 +77,11 @@ func (v hg) Contains(dir string, revision string) (bool, error) {
 	stdout, stderr, err := dividedOutput(cmd)
 	switch {
 	case err == nil && len(stdout) != 0:
-		return true, nil
+		return true, nil // Non-zero output means this commit is indeed contained.
 	case err == nil && len(stdout) == 0:
-		return false, nil
+		return false, nil // Zero output means this commit is not contained.
 	case err != nil && string(stderr) == fmt.Sprintf("abort: unknown revision '%s'!\n", revision):
-		return false, nil
+		return false, nil // Unknown revision error means this commit is not contained.
 	default:
 		return false, err
 	}

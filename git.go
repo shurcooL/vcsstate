@@ -74,9 +74,10 @@ func (v git) Contains(dir string, revision string) (bool, error) {
 	stdout, stderr, err := dividedOutput(cmd)
 	switch {
 	case err == nil:
-		return len(stdout) >= 2 && trim.LastNewline(string(stdout[2:])) == v.defaultBranch(), nil
+		// If this commit is contained, the expected output is exactly "* master\n".
+		return string(stdout) == fmt.Sprintf("* %s\n", v.defaultBranch()), nil
 	case err != nil && strings.HasPrefix(string(stderr), fmt.Sprintf("error: no such commit %s\n", revision)):
-		return false, nil
+		return false, nil // No such commit error means this commit is not contained.
 	default:
 		return false, err
 	}
