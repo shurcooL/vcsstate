@@ -40,7 +40,6 @@ func (hg) Branch(dir string) (string, error) {
 const hgRevisionLength = 40
 
 func (v hg) LocalRevision(dir string) (string, error) {
-	// Alternative: hg parent --template '{node}'.
 	cmd := exec.Command("hg", "--debug", "identify", "-i", "--rev", v.defaultBranch())
 	cmd.Dir = dir
 
