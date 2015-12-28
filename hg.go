@@ -76,7 +76,6 @@ func (hg) RemoteURL(dir string) (string, error) {
 }
 
 func (v hg) RemoteRevision(dir string) (string, error) {
-	// TODO: Make this more robust and proper, etc.
 	cmd := exec.Command("hg", "--debug", "identify", "-i", "--rev", v.defaultBranch(), "default")
 	cmd.Dir = dir
 

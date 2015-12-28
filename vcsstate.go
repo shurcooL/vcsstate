@@ -61,7 +61,7 @@ func NewRemoteVCS(vcs *vcs.Cmd) (RemoteVCS, error) {
 	case "git":
 		return remoteGit{}, nil
 	case "hg":
-		return nil, fmt.Errorf("RemoteVCS is not implemented for hg")
+		return remoteHg{}, nil
 	default:
 		return nil, fmt.Errorf("unsupported vcs.Cmd: %v", vcs.Cmd)
 	}
