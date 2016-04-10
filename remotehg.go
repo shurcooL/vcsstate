@@ -12,7 +12,7 @@ type remoteHg struct{}
 func (v remoteHg) RemoteRevision(remoteURL string) (string, error) {
 	cmd := exec.Command("hg", "--debug", "identify", "-i", "--rev", v.defaultBranch(), remoteURL)
 
-	out, err := cmd.Output()
+	out, err := outputTimeout(cmd)
 	if err != nil {
 		return "", err
 	}

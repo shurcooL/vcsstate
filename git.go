@@ -20,7 +20,7 @@ func (git) Status(dir string) (string, error) {
 	cmd := exec.Command("git", "status", "--porcelain")
 	cmd.Dir = dir
 
-	out, err := cmd.Output()
+	out, err := outputTimeout(cmd)
 	if err != nil {
 		return "", err
 	}
@@ -31,7 +31,7 @@ func (git) Branch(dir string) (string, error) {
 	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
 	cmd.Dir = dir
 
-	out, err := cmd.Output()
+	out, err := outputTimeout(cmd)
 	if err != nil {
 		return "", err
 	}
@@ -46,7 +46,7 @@ func (v git) LocalRevision(dir string) (string, error) {
 	cmd := exec.Command("git", "rev-parse", v.defaultBranch())
 	cmd.Dir = dir
 
-	out, err := cmd.Output()
+	out, err := outputTimeout(cmd)
 	if err != nil {
 		return "", err
 	}
@@ -60,7 +60,7 @@ func (git) Stash(dir string) (string, error) {
 	cmd := exec.Command("git", "stash", "list")
 	cmd.Dir = dir
 
-	out, err := cmd.Output()
+	out, err := outputTimeout(cmd)
 	if err != nil {
 		return "", err
 	}
@@ -71,7 +71,7 @@ func (v git) Contains(dir string, revision string) (bool, error) {
 	cmd := exec.Command("git", "branch", "--list", "--contains", revision, v.defaultBranch())
 	cmd.Dir = dir
 
-	stdout, stderr, err := dividedOutput(cmd)
+	stdout, stderr, err := dividedOutputTimeout(cmd)
 	switch {
 	case err == nil:
 		// If this commit is contained, the expected output is exactly "* master\n" or "  master\n" if we're on another branch.
@@ -108,7 +108,7 @@ func (git) RemoteURL(dir string) (string, error) {
 	cmd := exec.Command("git", "ls-remote", "--get-url", "origin")
 	cmd.Dir = dir
 
-	out, err := cmd.Output()
+	out, err := outputTimeout(cmd)
 	if err != nil {
 		return "", err
 	}
@@ -124,7 +124,7 @@ func (v git) RemoteRevision(dir string) (string, error) {
 	env.Set("GIT_SSH_COMMAND", "ssh -o StrictHostKeyChecking=yes") // Default for StrictHostKeyChecking is "ask", which we don't want since v is non-interactive and we prefer to fail than block asking for user input.
 	cmd.Env = env
 
-	out, err := cmd.Output()
+	out, err := outputTimeout(cmd)
 	if err != nil {
 		return "", err
 	}
