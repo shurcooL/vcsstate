@@ -8,7 +8,7 @@ import (
 )
 
 // timeout for running commands. It helps if some remote server stalls and doesn't hang up, etc.
-const timeout = 10 * time.Second
+const timeout = 20 * time.Second
 
 // outputTimeout runs the command and returns its standard output,
 // with a timeout.
