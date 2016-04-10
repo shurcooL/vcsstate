@@ -2,8 +2,8 @@ package vcsstate
 
 import (
 	"bytes"
+	"os"
 	"os/exec"
-	"syscall"
 	"time"
 )
 
@@ -37,7 +37,7 @@ func runTimeout(cmd *exec.Cmd) error {
 		return err
 	}
 	t := time.AfterFunc(timeout, func() {
-		cmd.Process.Signal(syscall.SIGTERM)
+		cmd.Process.Signal(os.Interrupt)
 	})
 	defer t.Stop()
 	return cmd.Wait()
