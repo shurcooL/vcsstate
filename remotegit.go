@@ -18,7 +18,7 @@ func (v remoteGit) RemoteRevision(remoteURL string) (string, error) {
 	env.Set("GIT_SSH_COMMAND", "ssh -o StrictHostKeyChecking=yes") // Default for StrictHostKeyChecking is "ask", which we don't want since this is non-interactive and we prefer to fail than block asking for user input.
 	cmd.Env = env
 
-	out, err := cmd.Output()
+	out, err := outputTimeout(cmd)
 	if err != nil {
 		return "", err
 	}

@@ -18,7 +18,7 @@ func (hg) Status(dir string) (string, error) {
 	cmd := exec.Command("hg", "status")
 	cmd.Dir = dir
 
-	out, err := cmd.Output()
+	out, err := outputTimeout(cmd)
 	if err != nil {
 		return "", err
 	}
@@ -29,7 +29,7 @@ func (hg) Branch(dir string) (string, error) {
 	cmd := exec.Command("hg", "branch")
 	cmd.Dir = dir
 
-	out, err := cmd.Output()
+	out, err := outputTimeout(cmd)
 	if err != nil {
 		return "", err
 	}
@@ -43,7 +43,7 @@ func (v hg) LocalRevision(dir string) (string, error) {
 	cmd := exec.Command("hg", "--debug", "identify", "-i", "--rev", v.defaultBranch())
 	cmd.Dir = dir
 
-	out, err := cmd.Output()
+	out, err := outputTimeout(cmd)
 	if err != nil {
 		return "", err
 	}
@@ -57,7 +57,7 @@ func (hg) Stash(dir string) (string, error) {
 	cmd := exec.Command("hg", "shelve", "--list")
 	cmd.Dir = dir
 
-	stdout, stderr, err := dividedOutput(cmd)
+	stdout, stderr, err := dividedOutputTimeout(cmd)
 	switch {
 	case err == nil && len(stdout) != 0:
 		return string(stdout), nil
@@ -74,7 +74,7 @@ func (v hg) Contains(dir string, revision string) (bool, error) {
 	cmd := exec.Command("hg", "log", "--branch", v.defaultBranch(), "--rev", revision)
 	cmd.Dir = dir
 
-	stdout, stderr, err := dividedOutput(cmd)
+	stdout, stderr, err := dividedOutputTimeout(cmd)
 	switch {
 	case err == nil && len(stdout) != 0:
 		return true, nil // Non-zero output means this commit is indeed contained.
@@ -91,7 +91,7 @@ func (hg) RemoteURL(dir string) (string, error) {
 	cmd := exec.Command("hg", "paths", "default")
 	cmd.Dir = dir
 
-	out, err := cmd.Output()
+	out, err := outputTimeout(cmd)
 	if err != nil {
 		return "", err
 	}
@@ -102,7 +102,7 @@ func (v hg) RemoteRevision(dir string) (string, error) {
 	cmd := exec.Command("hg", "--debug", "identify", "-i", "--rev", v.defaultBranch(), "default")
 	cmd.Dir = dir
 
-	out, err := cmd.Output()
+	out, err := outputTimeout(cmd)
 	if err != nil {
 		return "", err
 	}
