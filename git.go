@@ -104,6 +104,10 @@ func (git) RemoteURL(dir string) (string, error) {
 
 		I forgot what my motivation for trying to remove it was... It helped in some other situation,
 		but I can't remember which. :/ So revert this for now until I can recall, then document it!
+
+		Okay, it might've been for when master branch is tracking some non-origin remote.
+
+		Also, not specifying "origin" allows to more easily determine that there's no remote, because exit status is non-zero.
 	*/
 	cmd := exec.Command("git", "ls-remote", "--get-url", "origin")
 	cmd.Dir = dir
