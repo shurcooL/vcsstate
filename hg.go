@@ -10,10 +10,6 @@ import (
 
 type hg struct{}
 
-func (v hg) DefaultBranch() string {
-	return v.defaultBranch()
-}
-
 func (hg) Status(dir string) (string, error) {
 	cmd := exec.Command("hg", "status")
 	cmd.Dir = dir
@@ -39,8 +35,8 @@ func (hg) Branch(dir string) (string, error) {
 // hgRevisionLength is the length of a Mercurial revision hash.
 const hgRevisionLength = 40
 
-func (v hg) LocalRevision(dir string) (string, error) {
-	cmd := exec.Command("hg", "--debug", "identify", "-i", "--rev", v.defaultBranch())
+func (hg) LocalRevision(dir string, defaultBranch string) (string, error) {
+	cmd := exec.Command("hg", "--debug", "identify", "-i", "--rev", defaultBranch)
 	cmd.Dir = dir
 
 	out, err := cmd.Output()
@@ -70,8 +66,8 @@ func (hg) Stash(dir string) (string, error) {
 	}
 }
 
-func (v hg) Contains(dir string, revision string) (bool, error) {
-	cmd := exec.Command("hg", "log", "--branch", v.defaultBranch(), "--rev", revision)
+func (hg) Contains(dir string, revision string, defaultBranch string) (bool, error) {
+	cmd := exec.Command("hg", "log", "--branch", defaultBranch, "--rev", revision)
 	cmd.Dir = dir
 
 	stdout, stderr, err := dividedOutput(cmd)
@@ -98,19 +94,18 @@ func (hg) RemoteURL(dir string) (string, error) {
 	return trim.LastNewline(string(out)), nil
 }
 
-func (v hg) RemoteRevision(dir string) (string, error) {
-	cmd := exec.Command("hg", "--debug", "identify", "-i", "--rev", v.defaultBranch(), "default")
+func (hg) RemoteBranchAndRevision(dir string) (branch string, revision string, err error) {
+	// TODO: Query remote branch from actual remote; it's currently hardcoded to "default".
+	const defaultBranch = "default"
+
+	cmd := exec.Command("hg", "--debug", "identify", "-i", "--rev", defaultBranch, "default")
 	cmd.Dir = dir
 
 	out, err := cmd.Output()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	// Get the last line of output.
 	lines := strings.Split(trim.LastNewline(string(out)), "\n") // lines will always contain at least one element.
-	return lines[len(lines)-1], nil
-}
-
-func (hg) defaultBranch() string {
-	return "default"
+	return defaultBranch, lines[len(lines)-1], nil
 }

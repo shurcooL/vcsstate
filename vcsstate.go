@@ -10,9 +10,6 @@ import (
 // VCS describes how to use a version control system to get the status of a repository
 // rooted at dir.
 type VCS interface {
-	// DefaultBranch returns default branch name for this VCS type.
-	DefaultBranch() string
-
 	// Status returns the status of working directory.
 	// It returns empty string if no outstanding status.
 	Status(dir string) (string, error)
@@ -21,19 +18,20 @@ type VCS interface {
 	Branch(dir string) (string, error)
 
 	// LocalRevision returns current local revision of default branch.
-	LocalRevision(dir string) (string, error)
+	LocalRevision(dir string, defaultBranch string) (string, error)
 
 	// Stash returns a non-empty string if the repository has a stash.
 	Stash(dir string) (string, error)
 
 	// Contains reports if the local default branch contains the commit specified by revision.
-	Contains(dir string, revision string) (bool, error)
+	Contains(dir string, revision string, defaultBranch string) (bool, error)
 
 	// RemoteURL returns primary remote URL, as set in the local repository.
 	RemoteURL(dir string) (string, error)
 
-	// RemoteRevision returns latest remote revision of default branch.
-	RemoteRevision(dir string) (string, error)
+	// RemoteBranchAndRevision returns the name and latest revision of the default branch
+	// from the remote.
+	RemoteBranchAndRevision(dir string) (branch string, revision string, err error)
 }
 
 // NewVCS creates a VCS with same type as vcs.
@@ -51,8 +49,9 @@ func NewVCS(vcs *vcs.Cmd) (VCS, error) {
 // RemoteVCS describes how to use a version control system to get the remote status of a repository
 // with remoteURL.
 type RemoteVCS interface {
-	// RemoteRevision returns latest remote revision of default branch.
-	RemoteRevision(remoteURL string) (string, error)
+	// RemoteBranchAndRevision returns the name and latest revision of the default branch
+	// from the remote.
+	RemoteBranchAndRevision(remoteURL string) (branch string, revision string, err error)
 }
 
 // NewRemoteVCS creates a RemoteVCS with same type as vcs.
