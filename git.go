@@ -116,6 +116,8 @@ func (git) RemoteURL(dir string) (string, error) {
 	return trim.LastNewline(string(out)), nil
 }
 
+// ErrNoRemote is returned by RemoteBranchAndRevision when it fails because the local
+// repository doesn't have a valid remote.
 var ErrNoRemote = errors.New("local repository has no remote")
 
 func (git) RemoteBranchAndRevision(dir string) (branch string, revision string, err error) {
@@ -136,6 +138,23 @@ func (git) RemoteBranchAndRevision(dir string) (branch string, revision string, 
 	default:
 		return parseGitLsRemote(stdout)
 	}
+}
+
+type remoteGit struct{}
+
+func (remoteGit) RemoteBranchAndRevision(remoteURL string) (branch string, revision string, err error) {
+	// true here is not a boolean value, but a command /bin/true that will make git think it asked for a password,
+	// and prevent potential interactive password prompts (opting to return failure exit code instead).
+	cmd := exec.Command("git", "-c", "core.askpass=true", "ls-remote", remoteURL, "HEAD", "refs/heads/*")
+	env := osutil.Environ(os.Environ())
+	env.Set("GIT_SSH_COMMAND", "ssh -o StrictHostKeyChecking=yes") // Default for StrictHostKeyChecking is "ask", which we don't want since this is non-interactive and we prefer to fail than block asking for user input.
+	cmd.Env = env
+
+	stdout, stderr, err := dividedOutput(cmd)
+	if err != nil {
+		return "", "", fmt.Errorf("%v: %s", err, trim.LastNewline(string(stderr)))
+	}
+	return parseGitLsRemote(stdout)
 }
 
 func parseGitLsRemote(out []byte) (branch string, revision string, err error) {
@@ -167,61 +186,3 @@ func parseGitLsRemote(out []byte) (branch string, revision string, err error) {
 	}
 	return branch, revision, nil
 }
-
-/*
-// TODO.
-func (git) defaultBranch(dir string) string {
-	b, err := v.RemoteBranch(dir)
-	if err != nil {
-		panic(err)
-	}
-	return b
-}
-
-// isBare reports if repository is bare or not.
-func (git) isBare(dir string) (bool, error) {
-	cmd := exec.Command("git", "rev-parse", "--is-bare-repository")
-	cmd.Dir = dir
-
-	out, err := cmd.Output()
-	if err != nil {
-		return false, err
-	}
-	// Since rev-parse is considered porcelain and may change, need to error-check its output.
-	return strconv.ParseBool(trim.LastNewline(string(out)))
-}
-*/
-
-/*func (git) RemoteBranch(dir string) (string, error) {
-	isBare, err := v.isBare(dir)
-	if err != nil {
-		return "", err
-	}
-	switch {
-	case !isBare:
-		// Assumes "origin" is the name of remote.
-		// TODO: What if it's not? Is it safe to assume? Should more computations be done to check
-		//       if "origin" doesn't exist but another remote exists?
-		cmd := exec.Command("git", "symbolic-ref", "--short", "refs/remotes/origin/HEAD")
-		cmd.Dir = dir
-
-		out, err := cmd.Output()
-		if err != nil {
-			return "", err
-		}
-		out = out[len("origin/") : len(out)-1] // Trim prefix and last newline. Safe-ish to do because symbolic-ref is a plumbing command.
-		return string(out), nil
-	case isBare:
-		cmd := exec.Command("git", "symbolic-ref", "--short", "HEAD")
-		cmd.Dir = dir
-
-		out, err := cmd.Output()
-		if err != nil {
-			return "", err
-		}
-		out = out[:len(out)-1] // Trim last newline. Safe-ish to do because symbolic-ref is a plumbing command.
-		return string(out), nil
-	default:
-		panic("unreachable")
-	}
-}*/
