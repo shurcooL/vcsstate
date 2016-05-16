@@ -110,6 +110,10 @@ func (hg) RemoteBranchAndRevision(dir string) (branch string, revision string, e
 	return defaultBranch, lines[len(lines)-1], nil
 }
 
+func (hg) NoRemoteDefaultBranch() string {
+	return "default"
+}
+
 type remoteHg struct{}
 
 func (remoteHg) RemoteBranchAndRevision(remoteURL string) (branch string, revision string, err error) {

@@ -2,10 +2,15 @@
 package vcsstate
 
 import (
+	"errors"
 	"fmt"
 
 	"golang.org/x/tools/go/vcs"
 )
+
+// ErrNoRemote is returned by RemoteBranchAndRevision when it fails because the local
+// repository doesn't have a valid remote.
+var ErrNoRemote = errors.New("local repository has no remote")
 
 // VCS describes how to use a version control system to get the status of a repository
 // rooted at dir.
@@ -30,8 +35,14 @@ type VCS interface {
 	RemoteURL(dir string) (string, error)
 
 	// RemoteBranchAndRevision returns the name and latest revision of the default branch
-	// from the remote.
+	// from the remote. If returned error is ErrNoRemote, then default branch can
+	// be queried with NoRemoteDefaultBranch.
 	RemoteBranchAndRevision(dir string) (branch string, revision string, err error)
+
+	// NoRemoteDefaultBranch returns the default value of default branch for this vcs.
+	// It can only be relied on when there's no remote, since remote can have a custom
+	// value of default branch.
+	NoRemoteDefaultBranch() string
 }
 
 // NewVCS creates a VCS with same type as vcs.

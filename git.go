@@ -116,10 +116,6 @@ func (git) RemoteURL(dir string) (string, error) {
 	return trim.LastNewline(string(out)), nil
 }
 
-// ErrNoRemote is returned by RemoteBranchAndRevision when it fails because the local
-// repository doesn't have a valid remote.
-var ErrNoRemote = errors.New("local repository has no remote")
-
 func (git) RemoteBranchAndRevision(dir string) (branch string, revision string, err error) {
 	// true here is not a boolean value, but a command /bin/true that will make git think it asked for a password,
 	// and prevent potential interactive password prompts (opting to return failure exit code instead).
@@ -138,6 +134,10 @@ func (git) RemoteBranchAndRevision(dir string) (branch string, revision string, 
 	default:
 		return parseGitLsRemote(stdout)
 	}
+}
+
+func (git) NoRemoteDefaultBranch() string {
+	return "master"
 }
 
 type remoteGit struct{}
