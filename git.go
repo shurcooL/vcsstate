@@ -122,7 +122,7 @@ func (git) RemoteURL(dir string) (string, error) {
 	return trim.LastNewline(string(out)), nil
 }
 
-func (git) RemoteBranchAndRevision(dir string) (branch string, revision string, err error) {
+func (g git) RemoteBranchAndRevision(dir string) (branch string, revision string, err error) {
 	// true here is not a boolean value, but a command /bin/true that will make git think it asked for a password,
 	// and prevent potential interactive password prompts (opting to return failure exit code instead).
 	cmd := exec.Command("git", "-c", "core.askpass=true", "ls-remote", "origin", "HEAD", "refs/heads/*")
@@ -137,9 +137,48 @@ func (git) RemoteBranchAndRevision(dir string) (branch string, revision string, 
 		return "", "", ErrNoRemote
 	case err != nil:
 		return "", "", fmt.Errorf("%v: %s", err, trim.LastNewline(string(stderr)))
-	default:
-		return parseGitLsRemote(stdout)
 	}
+	_, revision, err = parseGitLsRemote(stdout)
+	if err != nil {
+		return "", "", err
+	}
+	branch, err = g.remoteBranch(dir)
+	if err != nil {
+		return "", "", err
+	}
+	return branch, revision, nil
+}
+
+// remoteBranch is needed to reliable get remote default branch until git 2.8 becomes commonly available.
+func (git) remoteBranch(dir string) (string, error) {
+	// true here is not a boolean value, but a command /bin/true that will make git think it asked for a password,
+	// and prevent potential interactive password prompts (opting to return failure exit code instead).
+	cmd := exec.Command("git", "-c", "core.askpass=true", "remote", "show", "origin")
+	cmd.Dir = dir
+	env := osutil.Environ(os.Environ())
+	env.Set("GIT_SSH_COMMAND", "ssh -o StrictHostKeyChecking=yes") // Default for StrictHostKeyChecking is "ask", which we don't want since this is non-interactive and we prefer to fail than block asking for user input.
+	cmd.Env = env
+
+	stdout, stderr, err := dividedOutput(cmd)
+	switch {
+	case err != nil && bytes.HasPrefix(stderr, []byte("fatal: 'origin' does not appear to be a git repository\n")):
+		return "", ErrNoRemote
+	case err != nil:
+		return "", fmt.Errorf("%v: %s", err, trim.LastNewline(string(stderr)))
+	}
+	const s = "\n  HEAD branch: "
+	i := bytes.Index(stdout, []byte(s))
+	if i == -1 {
+		return "", errors.New("no HEAD branch")
+	}
+	i += len(s)
+	nl := bytes.IndexByte(stdout[i:], '\n')
+	if nl == -1 {
+		nl = len(stdout)
+	} else {
+		nl = nl + i
+	}
+	return string(stdout[i:nl]), nil
 }
 
 func (git) NoRemoteDefaultBranch() string {
