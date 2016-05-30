@@ -105,8 +105,13 @@ func (git) RemoteURL(dir string) (string, error) {
 		Okay, it might've been for when master branch is tracking some non-origin remote.
 
 		Also, not specifying "origin" allows to more easily determine that there's no remote, because exit status is non-zero.
+
+		Ok, it's really needed in the following situation. Imagine you're currently on non-default branch, and that branch
+		happens to have a different remote set. Then `git ls-remote --get-url` will get the remote of current branch, instead
+		of that of origin. So, in order to get any kind of sane results, we must assume default remote is "origin" and explicitly
+		specify it here.
 	*/
-	cmd := exec.Command("git", "ls-remote", "--get-url")
+	cmd := exec.Command("git", "ls-remote", "--get-url", "origin")
 	cmd.Dir = dir
 
 	out, err := cmd.Output()
