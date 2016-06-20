@@ -149,7 +149,7 @@ func (g git) RemoteBranchAndRevision(dir string) (branch string, revision string
 	return branch, revision, nil
 }
 
-// remoteBranch is needed to reliable get remote default branch until git 2.8 becomes commonly available.
+// remoteBranch is needed to reliably get remote default branch until git 2.8 becomes commonly available.
 func (git) remoteBranch(dir string) (string, error) {
 	// true here is not a boolean value, but a command /bin/true that will make git think it asked for a password,
 	// and prevent potential interactive password prompts (opting to return failure exit code instead).
