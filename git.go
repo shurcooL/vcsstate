@@ -123,11 +123,10 @@ func (git) RemoteURL(dir string) (string, error) {
 }
 
 func (g git) RemoteBranchAndRevision(dir string) (branch string, revision string, err error) {
-	// true here is not a boolean value, but a command /bin/true that will make git think it asked for a password,
-	// and prevent potential interactive password prompts (opting to return failure exit code instead).
-	cmd := exec.Command("git", "-c", "core.askpass=true", "ls-remote", "origin", "HEAD", "refs/heads/*")
+	cmd := exec.Command("git", "ls-remote", "origin", "HEAD", "refs/heads/*")
 	cmd.Dir = dir
 	env := osutil.Environ(os.Environ())
+	env.Set("GIT_ASKPASS", "true")                                 // true here is not a boolean value, but a command /bin/true that will make git think it asked for a password, and prevent potential interactive password prompts (opting to return failure exit code instead).
 	env.Set("GIT_SSH_COMMAND", "ssh -o StrictHostKeyChecking=yes") // Default for StrictHostKeyChecking is "ask", which we don't want since this is non-interactive and we prefer to fail than block asking for user input.
 	cmd.Env = env
 
@@ -151,11 +150,10 @@ func (g git) RemoteBranchAndRevision(dir string) (branch string, revision string
 
 // remoteBranch is needed to reliably get remote default branch until git 2.8 becomes commonly available.
 func (git) remoteBranch(dir string) (string, error) {
-	// true here is not a boolean value, but a command /bin/true that will make git think it asked for a password,
-	// and prevent potential interactive password prompts (opting to return failure exit code instead).
-	cmd := exec.Command("git", "-c", "core.askpass=true", "remote", "show", "origin")
+	cmd := exec.Command("git", "remote", "show", "origin")
 	cmd.Dir = dir
 	env := osutil.Environ(os.Environ())
+	env.Set("GIT_ASKPASS", "true")                                 // true here is not a boolean value, but a command /bin/true that will make git think it asked for a password, and prevent potential interactive password prompts (opting to return failure exit code instead).
 	env.Set("GIT_SSH_COMMAND", "ssh -o StrictHostKeyChecking=yes") // Default for StrictHostKeyChecking is "ask", which we don't want since this is non-interactive and we prefer to fail than block asking for user input.
 	cmd.Env = env
 
@@ -188,10 +186,9 @@ func (git) NoRemoteDefaultBranch() string {
 type remoteGit struct{}
 
 func (remoteGit) RemoteBranchAndRevision(remoteURL string) (branch string, revision string, err error) {
-	// true here is not a boolean value, but a command /bin/true that will make git think it asked for a password,
-	// and prevent potential interactive password prompts (opting to return failure exit code instead).
-	cmd := exec.Command("git", "-c", "core.askpass=true", "ls-remote", remoteURL, "HEAD", "refs/heads/*")
+	cmd := exec.Command("git", "ls-remote", remoteURL, "HEAD", "refs/heads/*")
 	env := osutil.Environ(os.Environ())
+	env.Set("GIT_ASKPASS", "true")                                 // true here is not a boolean value, but a command /bin/true that will make git think it asked for a password, and prevent potential interactive password prompts (opting to return failure exit code instead).
 	env.Set("GIT_SSH_COMMAND", "ssh -o StrictHostKeyChecking=yes") // Default for StrictHostKeyChecking is "ask", which we don't want since this is non-interactive and we prefer to fail than block asking for user input.
 	cmd.Env = env
 
