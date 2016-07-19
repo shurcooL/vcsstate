@@ -179,6 +179,12 @@ func (git) remoteBranch(dir string) (string, error) {
 	return string(stdout[i:nl]), nil
 }
 
+func (git) CachedRemoteDefaultBranch() (string, error) {
+	// TODO: Apply more effort to actually get a cached remote default branch.
+	//       For now, just fall back to "master", but we can do better than that.
+	return "", fmt.Errorf("not yet implemented for git, fall back to NoRemoteDefaultBranch")
+}
+
 func (git) NoRemoteDefaultBranch() string {
 	return "master"
 }

@@ -110,6 +110,10 @@ func (hg) RemoteBranchAndRevision(dir string) (branch string, revision string, e
 	return defaultBranch, lines[len(lines)-1], nil
 }
 
+func (hg) CachedRemoteDefaultBranch() (string, error) {
+	return "", fmt.Errorf("not implemented for hg, just use NoRemoteDefaultBranch")
+}
+
 func (hg) NoRemoteDefaultBranch() string {
 	return "default"
 }

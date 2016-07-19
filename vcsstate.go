@@ -37,7 +37,15 @@ type VCS interface {
 	// RemoteBranchAndRevision returns the name and latest revision of the default branch
 	// from the remote. If returned error is ErrNoRemote, then default branch can
 	// be queried with NoRemoteDefaultBranch.
+	// This operation requires the use of network, and will fail if offline.
+	// When offline, CachedRemoteDefaultBranch can be used as a fallback.
 	RemoteBranchAndRevision(dir string) (branch string, revision string, err error)
+
+	// CachedRemoteDefaultBranch returns a locally cached remote default branch,
+	// if it can do so successfully. It can be used to make a best effort guess
+	// of the remote default branch when offline. If it fails, the only viable
+	// next best fallback before online again is to use NoRemoteDefaultBranch.
+	CachedRemoteDefaultBranch() (string, error)
 
 	// NoRemoteDefaultBranch returns the default value of default branch for this vcs.
 	// It can only be relied on when there's no remote, since remote can have a custom
