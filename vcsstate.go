@@ -57,11 +57,11 @@ type VCS interface {
 func NewVCS(vcs *vcs.Cmd) (VCS, error) {
 	switch vcs.Cmd {
 	case "git":
-		return git{}, nil
+		return git{}, gitBinaryError
 	case "hg":
-		return hg{}, nil
+		return hg{}, hgBinaryError
 	default:
-		return nil, fmt.Errorf("unsupported vcs.Cmd: %v", vcs.Cmd)
+		return nil, fmt.Errorf("%v (%v) support not implemented", vcs.Name, vcs.Cmd)
 	}
 }
 
@@ -77,10 +77,10 @@ type RemoteVCS interface {
 func NewRemoteVCS(vcs *vcs.Cmd) (RemoteVCS, error) {
 	switch vcs.Cmd {
 	case "git":
-		return remoteGit{}, nil
+		return remoteGit{}, gitBinaryError
 	case "hg":
-		return remoteHg{}, nil
+		return remoteHg{}, hgBinaryError
 	default:
-		return nil, fmt.Errorf("unsupported vcs.Cmd: %v", vcs.Cmd)
+		return nil, fmt.Errorf("%v (%v) support not implemented", vcs.Name, vcs.Cmd)
 	}
 }

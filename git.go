@@ -12,6 +12,8 @@ import (
 	"github.com/shurcooL/go/trim"
 )
 
+var _, gitBinaryError = exec.LookPath("git")
+
 type git struct{}
 
 func (git) Status(dir string) (string, error) {

@@ -8,6 +8,8 @@ import (
 	"github.com/shurcooL/go/trim"
 )
 
+var _, hgBinaryError = exec.LookPath("hg")
+
 type hg struct{}
 
 func (hg) Status(dir string) (string, error) {
