@@ -89,17 +89,19 @@ func (git) RemoteURL(dir string) (string, error) {
 	// we must assume default remote is "origin" and explicitly specify it here. If it doesn't exist,
 	// then we treat that as no remote (even if some other remote exists), because this is a simple
 	// and consistent thing to do.
-	cmd := exec.Command("git", "remote", "get-url", "origin")
+	// TODO: Once git 2.7 becomes generally available, consider reverting back to `git remote get-url origin`.
+	cmd := exec.Command("git", "remote", "-v")
 	cmd.Dir = dir
 
-	stdout, stderr, err := dividedOutput(cmd)
-	switch {
-	case err != nil && bytes.Equal(stderr, []byte("fatal: No such remote 'origin'\n")):
-		return "", ErrNoRemote
-	case err != nil:
+	out, err := cmd.Output()
+	if err != nil {
 		return "", err
 	}
-	return trim.LastNewline(string(stdout)), nil
+	url, err := parseGitRemote(out)
+	if err != nil {
+		return "", ErrNoRemote
+	}
+	return url, nil
 }
 
 func (g git) RemoteBranchAndRevision(dir string) (branch string, revision string, err error) {
@@ -183,6 +185,29 @@ func (remoteGit) RemoteBranchAndRevision(remoteURL string) (branch string, revis
 		return "", "", fmt.Errorf("%v: %s", err, trim.LastNewline(string(stderr)))
 	}
 	return parseGitLsRemote(stdout)
+}
+
+// parseGitRemote parses the fetch URL for "origin" remote, if it exists.
+func parseGitRemote(out []byte) (url string, err error) {
+	if len(out) == 0 {
+		return "", errors.New("no origin remote")
+	}
+	lines := strings.Split(string(out[:len(out)-1]), "\n")
+	for _, line := range lines {
+		// E.g., "origin	https://github.com/shurcooL/vcsstate (fetch)".
+		nameURLKind := strings.Split(line, "\t")
+		name, urlKind := nameURLKind[0], nameURLKind[1]
+
+		if name != "origin" {
+			continue
+		}
+		if !strings.HasSuffix(urlKind, " (fetch)") {
+			continue
+		}
+		url := urlKind[:len(urlKind)-len(" (fetch)")]
+		return url, nil
+	}
+	return "", errors.New("no origin remote")
 }
 
 func parseGitLsRemote(out []byte) (branch string, revision string, err error) {
