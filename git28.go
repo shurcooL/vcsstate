@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 
-	"github.com/shurcooL/go/osutil"
 	"github.com/shurcooL/go/trim"
 )
 
@@ -18,10 +16,7 @@ var gitBinaryVersion, gitBinaryError = exec.Command("git", "--version").Output()
 type git28 struct{}
 
 func (git28) Status(dir string) (string, error) {
-	cmd := exec.Command("git", "status", "--porcelain")
-	cmd.Dir = dir
-
-	out, err := cmd.Output()
+	out, err := newCmd(dir, nil, "git", "status", "--porcelain").Output()
 	if err != nil {
 		return "", err
 	}
@@ -29,10 +24,7 @@ func (git28) Status(dir string) (string, error) {
 }
 
 func (git28) Branch(dir string) (string, error) {
-	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
-	cmd.Dir = dir
-
-	out, err := cmd.Output()
+	out, err := newCmd(dir, nil, "git", "rev-parse", "--abbrev-ref", "HEAD").Output()
 	if err != nil {
 		return "", err
 	}
@@ -44,10 +36,7 @@ func (git28) Branch(dir string) (string, error) {
 const gitRevisionLength = 40
 
 func (git28) LocalRevision(dir string, defaultBranch string) (string, error) {
-	cmd := exec.Command("git", "rev-parse", defaultBranch)
-	cmd.Dir = dir
-
-	out, err := cmd.Output()
+	out, err := newCmd(dir, nil, "git", "rev-parse", defaultBranch).Output()
 	if err != nil {
 		return "", err
 	}
@@ -58,10 +47,7 @@ func (git28) LocalRevision(dir string, defaultBranch string) (string, error) {
 }
 
 func (git28) Stash(dir string) (string, error) {
-	cmd := exec.Command("git", "stash", "list")
-	cmd.Dir = dir
-
-	out, err := cmd.Output()
+	out, err := newCmd(dir, nil, "git", "stash", "list").Output()
 	if err != nil {
 		return "", err
 	}
@@ -69,10 +55,7 @@ func (git28) Stash(dir string) (string, error) {
 }
 
 func (git28) Contains(dir string, revision string, defaultBranch string) (bool, error) {
-	cmd := exec.Command("git", "branch", "--list", "--contains", revision, defaultBranch)
-	cmd.Dir = dir
-
-	stdout, stderr, err := dividedOutput(cmd)
+	stdout, stderr, err := dividedOutput(newCmd(dir, nil, "git", "branch", "--list", "--contains", revision, defaultBranch))
 	switch {
 	case err == nil:
 		// If this commit is contained, the expected output is exactly "* master\n" or "  master\n" if we're on another branch.
@@ -90,10 +73,7 @@ func (git28) RemoteURL(dir string) (string, error) {
 	// we must assume default remote is "origin" and explicitly specify it here. If it doesn't exist,
 	// then we treat that as no remote (even if some other remote exists), because this is a simple
 	// and consistent thing to do.
-	cmd := exec.Command("git", "remote", "get-url", "origin")
-	cmd.Dir = dir
-
-	stdout, stderr, err := dividedOutput(cmd)
+	stdout, stderr, err := dividedOutput(newCmd(dir, nil, "git", "remote", "get-url", "origin"))
 	switch {
 	case err != nil && bytes.Equal(stderr, []byte("fatal: No such remote 'origin'\n")):
 		return "", ErrNoRemote
@@ -104,16 +84,7 @@ func (git28) RemoteURL(dir string) (string, error) {
 }
 
 func (g git28) RemoteBranchAndRevision(dir string) (branch string, revision string, err error) {
-	cmd := exec.Command("git", "ls-remote", "--symref", "origin", "HEAD", "refs/heads/*")
-	cmd.Dir = dir
-	env := osutil.Environ(os.Environ())
-	// THINK: Should we use "-c", "credential.helper=true"?
-	//        It's higher priority than GIT_ASKPASS, but
-	//        maybe stops private repos from working?
-	env.Set("GIT_ASKPASS", "true")                                 // `true` here is not a boolean value, but a command /bin/true that will make git think it asked for a password, and prevent potential interactive password prompts (opting to return failure exit code instead).
-	env.Set("GIT_SSH_COMMAND", "ssh -o StrictHostKeyChecking=yes") // Default for StrictHostKeyChecking is "ask", which we don't want since this is non-interactive and we prefer to fail than block asking for user input.
-	cmd.Env = env
-
+	cmd := newCmd(dir, remoteEnv(), "git", "ls-remote", "--symref", "origin", "HEAD", "refs/heads/*")
 	stdout, stderr, err := dividedOutput(cmd)
 	switch {
 	case err != nil && bytes.HasPrefix(stderr, []byte("fatal: 'origin' does not appear to be a git repository\n")):
@@ -139,14 +110,7 @@ func (g git28) RemoteBranchAndRevision(dir string) (branch string, revision stri
 // remoteBranch is still needed to reliably get remote default branch
 // when git server doesn't support --symref option of ls-remote.
 func (git28) remoteBranch(dir string) (string, error) {
-	cmd := exec.Command("git", "remote", "show", "origin")
-	cmd.Dir = dir
-	env := osutil.Environ(os.Environ())
-	env.Set("GIT_ASKPASS", "true")                                 // `true` here is not a boolean value, but a command /bin/true that will make git think it asked for a password, and prevent potential interactive password prompts (opting to return failure exit code instead).
-	env.Set("GIT_SSH_COMMAND", "ssh -o StrictHostKeyChecking=yes") // Default for StrictHostKeyChecking is "ask", which we don't want since this is non-interactive and we prefer to fail than block asking for user input.
-	cmd.Env = env
-
-	stdout, stderr, err := dividedOutput(cmd)
+	stdout, stderr, err := dividedOutput(newCmd(dir, remoteEnv(), "git", "remote", "show", "origin"))
 	switch {
 	case err != nil && bytes.HasPrefix(stderr, []byte("fatal: 'origin' does not appear to be a git repository\n")):
 		return "", ErrNoRemote
@@ -181,12 +145,7 @@ func (git28) NoRemoteDefaultBranch() string {
 type remoteGit28 struct{}
 
 func (remoteGit28) RemoteBranchAndRevision(remoteURL string) (branch string, revision string, err error) {
-	cmd := exec.Command("git", "ls-remote", "--symref", remoteURL, "HEAD", "refs/heads/*")
-	env := osutil.Environ(os.Environ())
-	env.Set("GIT_ASKPASS", "true")                                 // `true` here is not a boolean value, but a command /bin/true that will make git think it asked for a password, and prevent potential interactive password prompts (opting to return failure exit code instead).
-	env.Set("GIT_SSH_COMMAND", "ssh -o StrictHostKeyChecking=yes") // Default for StrictHostKeyChecking is "ask", which we don't want since this is non-interactive and we prefer to fail than block asking for user input.
-	cmd.Env = env
-
+	cmd := newCmd("", remoteEnv(), "git", "ls-remote", "--symref", remoteURL, "HEAD", "refs/heads/*")
 	stdout, stderr, err := dividedOutput(cmd)
 	if err != nil {
 		return "", "", fmt.Errorf("%v: %s", err, trim.LastNewline(string(stderr)))
