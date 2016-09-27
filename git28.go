@@ -12,11 +12,12 @@ import (
 	"github.com/shurcooL/go/trim"
 )
 
-var _, gitBinaryError = exec.LookPath("git")
+var gitBinaryVersion, gitBinaryError = exec.Command("git", "--version").Output()
 
-type git struct{}
+// git28 implements git support using git version 2.8+ binary.
+type git28 struct{}
 
-func (git) Status(dir string) (string, error) {
+func (git28) Status(dir string) (string, error) {
 	cmd := exec.Command("git", "status", "--porcelain")
 	cmd.Dir = dir
 
@@ -27,7 +28,7 @@ func (git) Status(dir string) (string, error) {
 	return string(out), nil
 }
 
-func (git) Branch(dir string) (string, error) {
+func (git28) Branch(dir string) (string, error) {
 	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
 	cmd.Dir = dir
 
@@ -42,7 +43,7 @@ func (git) Branch(dir string) (string, error) {
 // gitRevisionLength is the length of a git revision hash.
 const gitRevisionLength = 40
 
-func (git) LocalRevision(dir string, defaultBranch string) (string, error) {
+func (git28) LocalRevision(dir string, defaultBranch string) (string, error) {
 	cmd := exec.Command("git", "rev-parse", defaultBranch)
 	cmd.Dir = dir
 
@@ -56,7 +57,7 @@ func (git) LocalRevision(dir string, defaultBranch string) (string, error) {
 	return string(out[:gitRevisionLength]), nil
 }
 
-func (git) Stash(dir string) (string, error) {
+func (git28) Stash(dir string) (string, error) {
 	cmd := exec.Command("git", "stash", "list")
 	cmd.Dir = dir
 
@@ -67,7 +68,7 @@ func (git) Stash(dir string) (string, error) {
 	return string(out), nil
 }
 
-func (git) Contains(dir string, revision string, defaultBranch string) (bool, error) {
+func (git28) Contains(dir string, revision string, defaultBranch string) (bool, error) {
 	cmd := exec.Command("git", "branch", "--list", "--contains", revision, defaultBranch)
 	cmd.Dir = dir
 
@@ -84,30 +85,31 @@ func (git) Contains(dir string, revision string, defaultBranch string) (bool, er
 	}
 }
 
-func (git) RemoteURL(dir string) (string, error) {
+func (git28) RemoteURL(dir string) (string, error) {
 	// We may be on a non-default branch with a different remote set. In order to get consistent results,
 	// we must assume default remote is "origin" and explicitly specify it here. If it doesn't exist,
 	// then we treat that as no remote (even if some other remote exists), because this is a simple
 	// and consistent thing to do.
-	// TODO: Once git 2.7 becomes generally available, consider reverting back to `git remote get-url origin`.
-	cmd := exec.Command("git", "remote", "-v")
+	cmd := exec.Command("git", "remote", "get-url", "origin")
 	cmd.Dir = dir
 
-	out, err := cmd.Output()
-	if err != nil {
+	stdout, stderr, err := dividedOutput(cmd)
+	switch {
+	case err != nil && bytes.Equal(stderr, []byte("fatal: No such remote 'origin'\n")):
+		return "", ErrNoRemote
+	case err != nil:
 		return "", err
 	}
-	url, err := parseGitRemote(out)
-	if err != nil {
-		return "", ErrNoRemote
-	}
-	return url, nil
+	return trim.LastNewline(string(stdout)), nil
 }
 
-func (g git) RemoteBranchAndRevision(dir string) (branch string, revision string, err error) {
-	cmd := exec.Command("git", "ls-remote", "origin", "HEAD", "refs/heads/*")
+func (g git28) RemoteBranchAndRevision(dir string) (branch string, revision string, err error) {
+	cmd := exec.Command("git", "ls-remote", "--symref", "origin", "HEAD", "refs/heads/*")
 	cmd.Dir = dir
 	env := osutil.Environ(os.Environ())
+	// THINK: Should we use "-c", "credential.helper=true"?
+	//        It's higher priority than GIT_ASKPASS, but
+	//        maybe stops private repos from working?
 	env.Set("GIT_ASKPASS", "true")                                 // `true` here is not a boolean value, but a command /bin/true that will make git think it asked for a password, and prevent potential interactive password prompts (opting to return failure exit code instead).
 	env.Set("GIT_SSH_COMMAND", "ssh -o StrictHostKeyChecking=yes") // Default for StrictHostKeyChecking is "ask", which we don't want since this is non-interactive and we prefer to fail than block asking for user input.
 	cmd.Env = env
@@ -119,19 +121,24 @@ func (g git) RemoteBranchAndRevision(dir string) (branch string, revision string
 	case err != nil:
 		return "", "", fmt.Errorf("%v: %s", err, trim.LastNewline(string(stderr)))
 	}
-	_, revision, err = parseGitLsRemote(stdout)
-	if err != nil {
-		return "", "", err
-	}
-	branch, err = g.remoteBranch(dir)
-	if err != nil {
+	branch, revision, err = parseGit28LsRemote(stdout)
+	switch {
+	case err == errBranchNotFound:
+		//log.Printf("%v:\n\tparseGit28LsRemote failed: %v,\n\tfalling back to g.remoteBranch.\n", dir, err)
+		// Some git servers doesn't support --symref option of ls-remote, so we need to fall back.
+		branch, err = g.remoteBranch(dir)
+		if err != nil {
+			return "", "", err
+		}
+	case err != nil:
 		return "", "", err
 	}
 	return branch, revision, nil
 }
 
-// remoteBranch is needed to reliably get remote default branch until git 2.8 becomes commonly available.
-func (git) remoteBranch(dir string) (string, error) {
+// remoteBranch is still needed to reliably get remote default branch
+// when git server doesn't support --symref option of ls-remote.
+func (git28) remoteBranch(dir string) (string, error) {
 	cmd := exec.Command("git", "remote", "show", "origin")
 	cmd.Dir = dir
 	env := osutil.Environ(os.Environ())
@@ -161,20 +168,20 @@ func (git) remoteBranch(dir string) (string, error) {
 	return string(stdout[i:nl]), nil
 }
 
-func (git) CachedRemoteDefaultBranch() (string, error) {
+func (git28) CachedRemoteDefaultBranch() (string, error) {
 	// TODO: Apply more effort to actually get a cached remote default branch.
 	//       For now, just fall back to "master", but we can do better than that.
 	return "", fmt.Errorf("not yet implemented for git, fall back to NoRemoteDefaultBranch")
 }
 
-func (git) NoRemoteDefaultBranch() string {
+func (git28) NoRemoteDefaultBranch() string {
 	return "master"
 }
 
-type remoteGit struct{}
+type remoteGit28 struct{}
 
-func (remoteGit) RemoteBranchAndRevision(remoteURL string) (branch string, revision string, err error) {
-	cmd := exec.Command("git", "ls-remote", remoteURL, "HEAD", "refs/heads/*")
+func (remoteGit28) RemoteBranchAndRevision(remoteURL string) (branch string, revision string, err error) {
+	cmd := exec.Command("git", "ls-remote", "--symref", remoteURL, "HEAD", "refs/heads/*")
 	env := osutil.Environ(os.Environ())
 	env.Set("GIT_ASKPASS", "true")                                 // `true` here is not a boolean value, but a command /bin/true that will make git think it asked for a password, and prevent potential interactive password prompts (opting to return failure exit code instead).
 	env.Set("GIT_SSH_COMMAND", "ssh -o StrictHostKeyChecking=yes") // Default for StrictHostKeyChecking is "ask", which we don't want since this is non-interactive and we prefer to fail than block asking for user input.
@@ -184,58 +191,39 @@ func (remoteGit) RemoteBranchAndRevision(remoteURL string) (branch string, revis
 	if err != nil {
 		return "", "", fmt.Errorf("%v: %s", err, trim.LastNewline(string(stderr)))
 	}
-	return parseGitLsRemote(stdout)
+	return parseGit28LsRemote(stdout)
 }
 
-// parseGitRemote parses the fetch URL for "origin" remote, if it exists.
-func parseGitRemote(out []byte) (url string, err error) {
-	if len(out) == 0 {
-		return "", errors.New("no origin remote")
-	}
-	lines := strings.Split(string(out[:len(out)-1]), "\n")
-	for _, line := range lines {
-		// E.g., "origin	https://github.com/shurcooL/vcsstate (fetch)".
-		nameURLKind := strings.Split(line, "\t")
-		name, urlKind := nameURLKind[0], nameURLKind[1]
-
-		if name != "origin" {
-			continue
-		}
-		if !strings.HasSuffix(urlKind, " (fetch)") {
-			continue
-		}
-		url := urlKind[:len(urlKind)-len(" (fetch)")]
-		return url, nil
-	}
-	return "", errors.New("no origin remote")
-}
-
-func parseGitLsRemote(out []byte) (branch string, revision string, err error) {
+func parseGit28LsRemote(out []byte) (branch string, revision string, err error) {
 	if len(out) == 0 {
 		return "", "", errors.New("empty ls-remote output")
 	}
 	lines := strings.Split(string(out[:len(out)-1]), "\n")
 	for _, line := range lines {
-		// E.g., "7cafcd837844e784b526369c9bce262804aebc60	refs/heads/main".
-		revisionReference := strings.Split(line, "\t")
-		rev, ref := revisionReference[0], revisionReference[1]
-
-		// This assumes HEAD comes first, before all other references.
-		if ref == "HEAD" {
-			revision = rev
+		parts := strings.SplitN(line, "\t", 2)
+		if parts[1] != "HEAD" {
 			continue
 		}
+		if strings.HasPrefix(parts[0], "ref: refs/heads/") {
+			// "ref: refs/heads/master	HEAD".
+			branch = parts[0][len("ref: refs/heads/"):]
+		} else {
+			// "7cafcd837844e784b526369c9bce262804aebc60	HEAD".
+			revision = parts[0]
+		}
 
-		// HACK: There may be more than one branch that matches; prefer "master" over all
-		//       others, but otherwise no choice but to pick a random one, since there does
-		//       not seem to be a way of finding it exactly (I'm happy to be proven wrong though).
-		// TODO: Once git 2.8 becomes available, use ls-remote --symref to fix this.
-		if rev == revision && branch != "master" {
-			branch = ref[len("refs/heads/"):]
+		if branch != "" && revision != "" {
+			return branch, revision, nil
 		}
 	}
-	if branch == "" || revision == "" {
-		return "", "", errors.New("HEAD revision not found in ls-remote output")
+	switch {
+	case branch == "" && revision != "":
+		return "", revision, errBranchNotFound
+	default:
+		return "", "", errors.New("HEAD branch or revision not found in ls-remote output")
 	}
-	return branch, revision, nil
 }
+
+// errBranchNotFound is returned when parseGit28LsRemote can't find HEAD branch
+// in ls-remote --symref output. This can happen for git servers that don't support it.
+var errBranchNotFound = errors.New("HEAD branch not found in ls-remote output")

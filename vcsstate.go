@@ -2,6 +2,7 @@
 package vcsstate
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 
@@ -58,7 +59,21 @@ type VCS interface {
 func NewVCS(vcs *vcs.Cmd) (VCS, error) {
 	switch vcs.Cmd {
 	case "git":
-		return git{}, gitBinaryError
+		if gitBinaryError != nil {
+			return nil, gitBinaryError
+		}
+		var major, minor int
+		_, err := fmt.Fscanf(bytes.NewReader(gitBinaryVersion), "git version %d.%d", &major, &minor)
+		if err != nil {
+			return nil, err
+		}
+		if major > 2 || major == 2 && minor >= 8 {
+			return git28{}, nil
+		} else if major > 1 || major == 1 && minor >= 7 {
+			return git17{}, nil
+		} else {
+			return nil, fmt.Errorf("git support requires git binary version 1.7+, but you have: %q", gitBinaryVersion)
+		}
 	case "hg":
 		return hg{}, hgBinaryError
 	default:
@@ -78,7 +93,21 @@ type RemoteVCS interface {
 func NewRemoteVCS(vcs *vcs.Cmd) (RemoteVCS, error) {
 	switch vcs.Cmd {
 	case "git":
-		return remoteGit{}, gitBinaryError
+		if gitBinaryError != nil {
+			return nil, gitBinaryError
+		}
+		var major, minor int
+		_, err := fmt.Fscanf(bytes.NewReader(gitBinaryVersion), "git version %d.%d", &major, &minor)
+		if err != nil {
+			return nil, err
+		}
+		if major > 2 || major == 2 && minor >= 8 {
+			return remoteGit28{}, nil
+		} else if major > 1 || major == 1 && minor >= 7 {
+			return remoteGit17{}, nil
+		} else {
+			return nil, fmt.Errorf("remote git support requires git binary version 1.7+, but you have: %q", gitBinaryVersion)
+		}
 	case "hg":
 		return remoteHg{}, hgBinaryError
 	default:

@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestParseGitRemote(t *testing.T) {
+func TestParseGit17Remote(t *testing.T) {
 	tests := []struct {
 		in      []byte
 		want    string
@@ -36,9 +36,9 @@ fork	https://github.com/foobar/vcsstate (push)
 	}
 
 	for _, test := range tests {
-		url, err := parseGitRemote(test.in)
+		url, err := parseGit17Remote(test.in)
 		if got, want := err, test.wantErr; !reflect.DeepEqual(got, want) {
-			t.Errorf("got %q, want %q", got, want)
+			t.Errorf("got %#v, want %#v", got, want)
 		}
 		if test.wantErr != nil {
 			continue
@@ -50,7 +50,7 @@ fork	https://github.com/foobar/vcsstate (push)
 	}
 }
 
-func TestParseGitLsRemote(t *testing.T) {
+func TestParseGit17LsRemote(t *testing.T) {
 	tests := []struct {
 		in           []byte
 		wantBranch   string
@@ -84,9 +84,9 @@ f93697607c2406ba00b57fe418f4101b4e447eb8	refs/heads/numbers
 	}
 
 	for _, test := range tests {
-		branch, revision, err := parseGitLsRemote(test.in)
+		branch, revision, err := parseGit17LsRemote(test.in)
 		if got, want := err, test.wantErr; !reflect.DeepEqual(got, want) {
-			t.Errorf("got %q, want %q", got, want)
+			t.Errorf("got %#v, want %#v", got, want)
 		}
 		if test.wantErr != nil {
 			continue
