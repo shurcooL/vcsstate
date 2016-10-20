@@ -18,6 +18,9 @@ type git17 struct{}
 func (git17) Status(dir string) (string, error) {
 	cmd := exec.Command("git", "status", "--porcelain")
 	cmd.Dir = dir
+	env := osutil.Environ(os.Environ())
+	env.Set("LANG", "en_US.UTF-8")
+	cmd.Env = env
 
 	out, err := cmd.Output()
 	if err != nil {
@@ -29,6 +32,9 @@ func (git17) Status(dir string) (string, error) {
 func (git17) Branch(dir string) (string, error) {
 	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
 	cmd.Dir = dir
+	env := osutil.Environ(os.Environ())
+	env.Set("LANG", "en_US.UTF-8")
+	cmd.Env = env
 
 	out, err := cmd.Output()
 	if err != nil {
@@ -41,6 +47,9 @@ func (git17) Branch(dir string) (string, error) {
 func (git17) LocalRevision(dir string, defaultBranch string) (string, error) {
 	cmd := exec.Command("git", "rev-parse", defaultBranch)
 	cmd.Dir = dir
+	env := osutil.Environ(os.Environ())
+	env.Set("LANG", "en_US.UTF-8")
+	cmd.Env = env
 
 	out, err := cmd.Output()
 	if err != nil {
@@ -55,6 +64,9 @@ func (git17) LocalRevision(dir string, defaultBranch string) (string, error) {
 func (git17) Stash(dir string) (string, error) {
 	cmd := exec.Command("git", "stash", "list")
 	cmd.Dir = dir
+	env := osutil.Environ(os.Environ())
+	env.Set("LANG", "en_US.UTF-8")
+	cmd.Env = env
 
 	out, err := cmd.Output()
 	if err != nil {
@@ -66,6 +78,9 @@ func (git17) Stash(dir string) (string, error) {
 func (git17) Contains(dir string, revision string, defaultBranch string) (bool, error) {
 	cmd := exec.Command("git", "branch", "--list", "--contains", revision, defaultBranch)
 	cmd.Dir = dir
+	env := osutil.Environ(os.Environ())
+	env.Set("LANG", "en_US.UTF-8")
+	cmd.Env = env
 
 	stdout, stderr, err := dividedOutput(cmd)
 	switch {
@@ -88,6 +103,9 @@ func (git17) RemoteURL(dir string) (string, error) {
 	// TODO: Once git 2.7 becomes generally available, consider reverting back to `git remote get-url origin`.
 	cmd := exec.Command("git", "remote", "-v")
 	cmd.Dir = dir
+	env := osutil.Environ(os.Environ())
+	env.Set("LANG", "en_US.UTF-8")
+	cmd.Env = env
 
 	out, err := cmd.Output()
 	if err != nil {
@@ -104,6 +122,7 @@ func (g git17) RemoteBranchAndRevision(dir string) (branch string, revision stri
 	cmd := exec.Command("git", "ls-remote", "origin", "HEAD", "refs/heads/*")
 	cmd.Dir = dir
 	env := osutil.Environ(os.Environ())
+	env.Set("LANG", "en_US.UTF-8")
 	env.Set("GIT_ASKPASS", "true")                                 // `true` here is not a boolean value, but a command /bin/true that will make git think it asked for a password, and prevent potential interactive password prompts (opting to return failure exit code instead).
 	env.Set("GIT_SSH_COMMAND", "ssh -o StrictHostKeyChecking=yes") // Default for StrictHostKeyChecking is "ask", which we don't want since this is non-interactive and we prefer to fail than block asking for user input.
 	cmd.Env = env
@@ -131,6 +150,7 @@ func (git17) remoteBranch(dir string) (string, error) {
 	cmd := exec.Command("git", "remote", "show", "origin")
 	cmd.Dir = dir
 	env := osutil.Environ(os.Environ())
+	env.Set("LANG", "en_US.UTF-8")
 	env.Set("GIT_ASKPASS", "true")                                 // `true` here is not a boolean value, but a command /bin/true that will make git think it asked for a password, and prevent potential interactive password prompts (opting to return failure exit code instead).
 	env.Set("GIT_SSH_COMMAND", "ssh -o StrictHostKeyChecking=yes") // Default for StrictHostKeyChecking is "ask", which we don't want since this is non-interactive and we prefer to fail than block asking for user input.
 	cmd.Env = env
@@ -172,6 +192,7 @@ type remoteGit17 struct{}
 func (remoteGit17) RemoteBranchAndRevision(remoteURL string) (branch string, revision string, err error) {
 	cmd := exec.Command("git", "ls-remote", remoteURL, "HEAD", "refs/heads/*")
 	env := osutil.Environ(os.Environ())
+	env.Set("LANG", "en_US.UTF-8")
 	env.Set("GIT_ASKPASS", "true")                                 // `true` here is not a boolean value, but a command /bin/true that will make git think it asked for a password, and prevent potential interactive password prompts (opting to return failure exit code instead).
 	env.Set("GIT_SSH_COMMAND", "ssh -o StrictHostKeyChecking=yes") // Default for StrictHostKeyChecking is "ask", which we don't want since this is non-interactive and we prefer to fail than block asking for user input.
 	cmd.Env = env

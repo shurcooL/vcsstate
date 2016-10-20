@@ -20,6 +20,9 @@ type git28 struct{}
 func (git28) Status(dir string) (string, error) {
 	cmd := exec.Command("git", "status", "--porcelain")
 	cmd.Dir = dir
+	env := osutil.Environ(os.Environ())
+	env.Set("LANG", "en_US.UTF-8")
+	cmd.Env = env
 
 	out, err := cmd.Output()
 	if err != nil {
@@ -31,6 +34,9 @@ func (git28) Status(dir string) (string, error) {
 func (git28) Branch(dir string) (string, error) {
 	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
 	cmd.Dir = dir
+	env := osutil.Environ(os.Environ())
+	env.Set("LANG", "en_US.UTF-8")
+	cmd.Env = env
 
 	out, err := cmd.Output()
 	if err != nil {
@@ -46,6 +52,9 @@ const gitRevisionLength = 40
 func (git28) LocalRevision(dir string, defaultBranch string) (string, error) {
 	cmd := exec.Command("git", "rev-parse", defaultBranch)
 	cmd.Dir = dir
+	env := osutil.Environ(os.Environ())
+	env.Set("LANG", "en_US.UTF-8")
+	cmd.Env = env
 
 	out, err := cmd.Output()
 	if err != nil {
@@ -60,6 +69,9 @@ func (git28) LocalRevision(dir string, defaultBranch string) (string, error) {
 func (git28) Stash(dir string) (string, error) {
 	cmd := exec.Command("git", "stash", "list")
 	cmd.Dir = dir
+	env := osutil.Environ(os.Environ())
+	env.Set("LANG", "en_US.UTF-8")
+	cmd.Env = env
 
 	out, err := cmd.Output()
 	if err != nil {
@@ -71,6 +83,9 @@ func (git28) Stash(dir string) (string, error) {
 func (git28) Contains(dir string, revision string, defaultBranch string) (bool, error) {
 	cmd := exec.Command("git", "branch", "--list", "--contains", revision, defaultBranch)
 	cmd.Dir = dir
+	env := osutil.Environ(os.Environ())
+	env.Set("LANG", "en_US.UTF-8")
+	cmd.Env = env
 
 	stdout, stderr, err := dividedOutput(cmd)
 	switch {
@@ -92,6 +107,9 @@ func (git28) RemoteURL(dir string) (string, error) {
 	// and consistent thing to do.
 	cmd := exec.Command("git", "remote", "get-url", "origin")
 	cmd.Dir = dir
+	env := osutil.Environ(os.Environ())
+	env.Set("LANG", "en_US.UTF-8")
+	cmd.Env = env
 
 	stdout, stderr, err := dividedOutput(cmd)
 	switch {
@@ -107,6 +125,7 @@ func (g git28) RemoteBranchAndRevision(dir string) (branch string, revision stri
 	cmd := exec.Command("git", "ls-remote", "--symref", "origin", "HEAD", "refs/heads/*")
 	cmd.Dir = dir
 	env := osutil.Environ(os.Environ())
+	env.Set("LANG", "en_US.UTF-8")
 	// THINK: Should we use "-c", "credential.helper=true"?
 	//        It's higher priority than GIT_ASKPASS, but
 	//        maybe stops private repos from working?
@@ -142,6 +161,7 @@ func (git28) remoteBranch(dir string) (string, error) {
 	cmd := exec.Command("git", "remote", "show", "origin")
 	cmd.Dir = dir
 	env := osutil.Environ(os.Environ())
+	env.Set("LANG", "en_US.UTF-8")
 	env.Set("GIT_ASKPASS", "true")                                 // `true` here is not a boolean value, but a command /bin/true that will make git think it asked for a password, and prevent potential interactive password prompts (opting to return failure exit code instead).
 	env.Set("GIT_SSH_COMMAND", "ssh -o StrictHostKeyChecking=yes") // Default for StrictHostKeyChecking is "ask", which we don't want since this is non-interactive and we prefer to fail than block asking for user input.
 	cmd.Env = env
@@ -183,6 +203,7 @@ type remoteGit28 struct{}
 func (remoteGit28) RemoteBranchAndRevision(remoteURL string) (branch string, revision string, err error) {
 	cmd := exec.Command("git", "ls-remote", "--symref", remoteURL, "HEAD", "refs/heads/*")
 	env := osutil.Environ(os.Environ())
+	env.Set("LANG", "en_US.UTF-8")
 	env.Set("GIT_ASKPASS", "true")                                 // `true` here is not a boolean value, but a command /bin/true that will make git think it asked for a password, and prevent potential interactive password prompts (opting to return failure exit code instead).
 	env.Set("GIT_SSH_COMMAND", "ssh -o StrictHostKeyChecking=yes") // Default for StrictHostKeyChecking is "ask", which we don't want since this is non-interactive and we prefer to fail than block asking for user input.
 	cmd.Env = env
