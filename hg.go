@@ -24,6 +24,20 @@ func (hg) Status(dir string) (string, error) {
 }
 
 func (hg) Branch(dir string) (string, error) {
+	/* TODO: Detect and report detached head mode. This currently returns "default" even when in detached head mode.
+
+	Consider using `hg --debug identify` to resolve this. It might be helpful to detect detached head mode.
+
+		hg --debug identify
+
+		Print a summary identifying the repository state at REV using one or two parent hash identifiers,
+		followed by a "+" if the working directory has uncommitted changes, the branch name (if not default),
+		a list of tags, and a list of bookmarks.
+
+		65c40fd06bc50fdd6ded3a97b213f20d31428431
+		f5ac12b15e49095c60ae0acc6da0e28d47e2a29f+ tip
+		f5ac12b15e49095c60ae0acc6da0e28d47e2a29f tip
+	*/
 	cmd := exec.Command("hg", "branch")
 	cmd.Dir = dir
 
