@@ -1,4 +1,7 @@
-# vcsstate [![Build Status](https://travis-ci.org/shurcooL/vcsstate.svg?branch=master)](https://travis-ci.org/shurcooL/vcsstate) [![GoDoc](https://godoc.org/github.com/shurcooL/vcsstate?status.svg)](https://godoc.org/github.com/shurcooL/vcsstate)
+vcsstate
+========
+
+[![Build Status](https://travis-ci.org/shurcooL/vcsstate.svg?branch=master)](https://travis-ci.org/shurcooL/vcsstate) [![GoDoc](https://godoc.org/github.com/shurcooL/vcsstate?status.svg)](https://godoc.org/github.com/shurcooL/vcsstate)
 
 Package vcsstate allows getting the state of version control system repositories.
 
