@@ -137,13 +137,19 @@ func (g git28) RemoteBranchAndRevision(dir string) (branch string, revision stri
 	switch {
 	case err != nil && bytes.HasPrefix(stderr, []byte("fatal: 'origin' does not appear to be a git repository\n")):
 		return "", "", ErrNoRemote
+	case err != nil && bytes.HasPrefix(stderr, []byte("remote: Repository not found.\n")):
+		return "", "", NotFoundError{Err: fmt.Errorf("%v: %s", err, trim.LastNewline(string(stderr)))}
+	// TODO: Consider detecting connectivity errors specifically via "fatal: unable to access " prefix:
+	//
+	//       	(done with wi-fi turned off)
+	//       	gostatus $ git ls-remote --symref origin HEAD refs/heads/*
+	//       	fatal: unable to access 'https://github.com/shurcooL/gostatus/': Could not resolve host: github.com
 	case err != nil:
 		return "", "", fmt.Errorf("%v: %s", err, trim.LastNewline(string(stderr)))
 	}
 	branch, revision, err = parseGit28LsRemote(stdout)
 	switch {
 	case err == errBranchNotFound:
-		//log.Printf("%v:\n\tparseGit28LsRemote failed: %v,\n\tfalling back to g.remoteBranch.\n", dir, err)
 		// Some git servers doesn't support --symref option of ls-remote, so we need to fall back.
 		branch, err = g.remoteBranch(dir)
 		if err != nil {
@@ -209,7 +215,11 @@ func (remoteGit28) RemoteBranchAndRevision(remoteURL string) (branch string, rev
 	cmd.Env = env
 
 	stdout, stderr, err := dividedOutput(cmd)
-	if err != nil {
+	switch {
+	case err != nil && bytes.HasPrefix(stderr, []byte("remote: Repository not found.\n")):
+		return "", "", NotFoundError{Err: fmt.Errorf("%v: %s", err, trim.LastNewline(string(stderr)))}
+	// TODO: Consider detecting connectivity errors specifically via "fatal: unable to access " prefix.
+	case err != nil:
 		return "", "", fmt.Errorf("%v: %s", err, trim.LastNewline(string(stderr)))
 	}
 	return parseGit28LsRemote(stdout)

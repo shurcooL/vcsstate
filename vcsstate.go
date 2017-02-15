@@ -9,9 +9,17 @@ import (
 	"golang.org/x/tools/go/vcs"
 )
 
-// ErrNoRemote is returned by RemoteURL and RemoteBranchAndRevision when the local
-// repository doesn't have a valid remote.
+// ErrNoRemote is the error used when the local repository doesn't have a valid remote.
 var ErrNoRemote = errors.New("local repository has no valid remote")
+
+// NotFoundError records an error where the remote repository is not found.
+type NotFoundError struct {
+	Err error // Underlying error with more details.
+}
+
+func (e NotFoundError) Error() string {
+	return fmt.Sprintf("remote repository not found:\n%v", e.Err)
+}
 
 // VCS describes how to use a version control system to get the status of a repository
 // rooted at dir.
@@ -39,6 +47,8 @@ type VCS interface {
 	// RemoteBranchAndRevision returns the name and latest revision of the default branch
 	// from the remote. If there's no remote, then ErrNoRemote is returned, and the
 	// default branch can be queried with NoRemoteDefaultBranch.
+	// If the remote repository is not found, NotFoundError is returned,
+	// and the default branch can be queried with NoRemoteDefaultBranch.
 	// This operation requires the use of network, and will fail if offline.
 	// When offline, CachedRemoteDefaultBranch can be used as a fallback.
 	RemoteBranchAndRevision(dir string) (branch string, revision string, err error)
@@ -85,7 +95,7 @@ func NewVCS(vcs *vcs.Cmd) (VCS, error) {
 // with remoteURL.
 type RemoteVCS interface {
 	// RemoteBranchAndRevision returns the name and latest revision of the default branch
-	// from the remote.
+	// from the remote. If the remote repository is not found, NotFoundError is returned.
 	RemoteBranchAndRevision(remoteURL string) (branch string, revision string, err error)
 }
 
