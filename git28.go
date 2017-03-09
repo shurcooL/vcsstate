@@ -173,10 +173,7 @@ func (git28) remoteBranch(dir string) (string, error) {
 	cmd.Env = env
 
 	stdout, stderr, err := dividedOutput(cmd)
-	switch {
-	case err != nil && bytes.HasPrefix(stderr, []byte("fatal: 'origin' does not appear to be a git repository\n")):
-		return "", ErrNoRemote
-	case err != nil:
+	if err != nil {
 		return "", fmt.Errorf("%v: %s", err, trim.LastNewline(string(stderr)))
 	}
 	const s = "\n  HEAD branch: "
