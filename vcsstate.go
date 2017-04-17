@@ -68,6 +68,8 @@ type VCS interface {
 // NewVCS creates a VCS with same type as vcs.
 func NewVCS(vcs *vcs.Cmd) (VCS, error) {
 	switch vcs.Cmd {
+	case "bzr":
+		return bzr{}, nil
 	case "git":
 		if gitBinaryError != nil {
 			return nil, gitBinaryError
@@ -102,6 +104,8 @@ type RemoteVCS interface {
 // NewRemoteVCS creates a RemoteVCS with same type as vcs.
 func NewRemoteVCS(vcs *vcs.Cmd) (RemoteVCS, error) {
 	switch vcs.Cmd {
+	case "bzr":
+		return nil, fmt.Errorf("RemoteVCS is not implemented for bzr")
 	case "git":
 		if gitBinaryError != nil {
 			return nil, gitBinaryError
