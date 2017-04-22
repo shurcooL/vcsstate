@@ -219,9 +219,24 @@ func (remoteGit28) RemoteBranchAndRevision(remoteURL string) (branch string, rev
 	case err != nil:
 		return "", "", fmt.Errorf("%v: %s", err, trim.LastNewline(string(stderr)))
 	}
-	return parseGit28LsRemote(stdout)
+	branch, revision, err = parseGit28LsRemote(stdout)
+	switch {
+	case err == errBranchNotFound:
+		// Some git servers doesn't support --symref option of ls-remote, so we need to fall back.
+		// Use guessBranch for now, because it's the best option I can think of at this time.
+		branch, err = guessBranch(stdout, revision)
+		if err != nil {
+			return "", "", err
+		}
+	case err != nil:
+		return "", "", err
+	}
+	return branch, revision, nil
 }
 
+// parseGit28LsRemote parses the branch and revision from output of
+// ls-remote --symref. It returns errBranchNotFound if HEAD branch is not found.
+// This can happen if git server doesn't support --symref option.
 func parseGit28LsRemote(out []byte) (branch string, revision string, err error) {
 	if len(out) == 0 {
 		return "", "", errors.New("empty ls-remote output")
@@ -255,3 +270,35 @@ func parseGit28LsRemote(out []byte) (branch string, revision string, err error) 
 // errBranchNotFound is returned when parseGit28LsRemote can't find HEAD branch
 // in ls-remote --symref output. This can happen for git servers that don't support it.
 var errBranchNotFound = errors.New("HEAD branch not found in ls-remote output")
+
+// guessBranch makes a best effort guess of determining HEAD branch
+// from output of ls-remote where --symref option wasn't supported by git server.
+// There doesn't seem to be a fully reliable way of determining it (I'm happy to be proven wrong).
+//
+// It's used by remoteGit28.RemoteBranchAndRevision as a fallback,
+// and it does same guessing logic as parseGit17LsRemote.
+func guessBranch(out []byte, revision string) (branch string, err error) {
+	if len(out) == 0 {
+		return "", errors.New("empty ls-remote output")
+	}
+	lines := strings.Split(string(out[:len(out)-1]), "\n")
+	for _, line := range lines {
+		// E.g., "7cafcd837844e784b526369c9bce262804aebc60	refs/heads/main".
+		revRef := strings.SplitN(line, "\t", 2)
+		rev, ref := revRef[0], revRef[1]
+		if rev != revision || ref == "HEAD" {
+			continue
+		}
+		// HACK: There may be more than one branch that matches; prefer "master" over all
+		//       others, but otherwise no choice but to pick a random one, since there does
+		//       not seem to be a way of finding it exactly (I'm happy to be proven wrong though).
+		//       Unfortunately some git servers still don't support --symref option.
+		if branch != "master" {
+			branch = ref[len("refs/heads/"):]
+		}
+	}
+	if branch == "" {
+		return "", errBranchNotFound
+	}
+	return branch, nil
+}

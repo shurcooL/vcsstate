@@ -224,6 +224,8 @@ func parseGit17Remote(out []byte) (url string, err error) {
 	return "", errors.New("no origin remote")
 }
 
+// parseGit17LsRemote parses the branch and revision from output of
+// ls-remote (without --symref option).
 func parseGit17LsRemote(out []byte) (branch string, revision string, err error) {
 	if len(out) == 0 {
 		return "", "", errors.New("empty ls-remote output")
@@ -243,13 +245,14 @@ func parseGit17LsRemote(out []byte) (branch string, revision string, err error) 
 		// HACK: There may be more than one branch that matches; prefer "master" over all
 		//       others, but otherwise no choice but to pick a random one, since there does
 		//       not seem to be a way of finding it exactly (I'm happy to be proven wrong though).
-		// TODO: Once git 2.8 becomes available, use ls-remote --symref to fix this.
+		//       In git 2.8, can use --symref option to fix this, but unfortunately some
+		//       git servers still don't support that option.
 		if rev == revision && branch != "master" {
 			branch = ref[len("refs/heads/"):]
 		}
 	}
 	if branch == "" || revision == "" {
-		return "", "", errors.New("HEAD revision not found in ls-remote output")
+		return "", "", errors.New("HEAD branch or revision not found in ls-remote output")
 	}
 	return branch, revision, nil
 }

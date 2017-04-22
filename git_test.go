@@ -6,6 +6,39 @@ import (
 	"testing"
 )
 
+func TestGuessBranch(t *testing.T) {
+	tests := []struct {
+		in         []byte
+		revision   string
+		wantBranch string
+		wantErr    error
+	}{
+		{
+			// Issue #10.
+			// git ls-remote --symref https://code.googlesource.com/google-api-go-client HEAD 'refs/heads/*'
+			in: []byte(`fbbaff1827317122a8a0e1b24de25df8417ce87b	HEAD
+fbbaff1827317122a8a0e1b24de25df8417ce87b	refs/heads/master
+`),
+			revision:   "fbbaff1827317122a8a0e1b24de25df8417ce87b",
+			wantBranch: "master",
+		},
+	}
+
+	for _, test := range tests {
+		branch, err := guessBranch(test.in, test.revision)
+		if got, want := err, test.wantErr; !reflect.DeepEqual(got, want) {
+			t.Errorf("got %#v, want %#v", got, want)
+		}
+		if test.wantErr != nil {
+			continue
+		}
+
+		if got, want := branch, test.wantBranch; got != want {
+			t.Errorf("got branch %q, want %q", got, want)
+		}
+	}
+}
+
 func TestParseGit17Remote(t *testing.T) {
 	tests := []struct {
 		in      []byte
