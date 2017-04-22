@@ -186,7 +186,7 @@ func (git28) remoteBranch(dir string) (string, error) {
 	if nl == -1 {
 		nl = len(stdout)
 	} else {
-		nl = nl + i
+		nl += i
 	}
 	return string(stdout[i:nl]), nil
 }
