@@ -76,7 +76,7 @@ func (git17) Stash(dir string) (string, error) {
 }
 
 func (git17) Contains(dir string, revision string, defaultBranch string) (bool, error) {
-	cmd := exec.Command("git", "branch", "--list", "--contains", revision, defaultBranch)
+	cmd := exec.Command("git", "branch", "--contains", revision, defaultBranch)
 	cmd.Dir = dir
 	env := osutil.Environ(os.Environ())
 	env.Set("LANG", "en_US.UTF-8")
@@ -96,7 +96,7 @@ func (git17) Contains(dir string, revision string, defaultBranch string) (bool, 
 }
 
 func (git17) RemoteContains(dir string, revision string) (bool, error) {
-	cmd := exec.Command("git", "branch", "-r", "--list", "--contains", revision, "origin/HEAD")
+	cmd := exec.Command("git", "branch", "-r", "--contains", revision, "origin/HEAD")
 	cmd.Dir = dir
 	env := osutil.Environ(os.Environ())
 	env.Set("LANG", "en_US.UTF-8")
