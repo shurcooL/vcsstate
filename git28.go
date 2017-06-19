@@ -100,6 +100,25 @@ func (git28) Contains(dir string, revision string, defaultBranch string) (bool, 
 	}
 }
 
+func (git28) RemoteContains(dir string, revision string) (bool, error) {
+	cmd := exec.Command("git", "branch", "--remotes", "--list", "--contains", revision, "origin/HEAD")
+	cmd.Dir = dir
+	env := osutil.Environ(os.Environ())
+	env.Set("LANG", "en_US.UTF-8")
+	cmd.Env = env
+
+	stdout, stderr, err := dividedOutput(cmd)
+	switch {
+	case err == nil:
+		// If this commit is contained, the expected output is exactly "  origin/HEAD\n".
+		return bytes.Equal(stdout, []byte("  origin/HEAD\n")), nil
+	case err != nil && bytes.HasPrefix(stderr, []byte(fmt.Sprintf("error: no such commit %s\n", revision))):
+		return false, nil // No such commit error means this commit is not contained.
+	default:
+		return false, err
+	}
+}
+
 func (git28) RemoteURL(dir string) (string, error) {
 	// We may be on a non-default branch with a different remote set. In order to get consistent results,
 	// we must assume default remote is "origin" and explicitly specify it here. If it doesn't exist,

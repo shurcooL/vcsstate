@@ -37,8 +37,13 @@ type VCS interface {
 	// Stash returns a non-empty string if the repository has a stash.
 	Stash(dir string) (string, error)
 
-	// Contains reports if the local default branch contains the commit specified by revision.
+	// Contains reports whether the local default branch contains
+	// the commit specified by revision.
 	Contains(dir string, revision string, defaultBranch string) (bool, error)
+
+	// RemoteContains reports whether the remote default branch contains
+	// the commit specified by revision.
+	RemoteContains(dir string, revision string) (bool, error)
 
 	// RemoteURL returns primary remote URL, as set in the local repository.
 	// If there's no remote, then ErrNoRemote is returned.

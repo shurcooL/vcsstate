@@ -1,6 +1,7 @@
 package vcsstate
 
 import (
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -97,6 +98,10 @@ func (hg) Contains(dir string, revision string, defaultBranch string) (bool, err
 	default:
 		return false, err
 	}
+}
+
+func (hg) RemoteContains(dir string, revision string) (bool, error) {
+	return false, errors.New("not implemented for hg")
 }
 
 func (hg) RemoteURL(dir string) (string, error) {
