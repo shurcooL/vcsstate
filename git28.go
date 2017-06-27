@@ -81,7 +81,8 @@ func (git28) Stash(dir string) (string, error) {
 }
 
 func (git28) Contains(dir string, revision string, defaultBranch string) (bool, error) {
-	cmd := exec.Command("git", "branch", "--contains", revision, defaultBranch)
+	// --format=contains is just an arbitrary constant string that we look for in the output.
+	cmd := exec.Command("git", "for-each-ref", "--format=contains", "--count=1", "--contains", revision, "refs/heads/"+defaultBranch)
 	cmd.Dir = dir
 	env := osutil.Environ(os.Environ())
 	env.Set("LANG", "en_US.UTF-8")
@@ -90,9 +91,8 @@ func (git28) Contains(dir string, revision string, defaultBranch string) (bool, 
 	stdout, stderr, err := dividedOutput(cmd)
 	switch {
 	case err == nil:
-		// If this commit is contained, the expected output is exactly "* master\n" or "  master\n" if we're on another branch.
-		return bytes.Equal(stdout, []byte(fmt.Sprintf("* %s\n", defaultBranch))) ||
-			bytes.Equal(stdout, []byte(fmt.Sprintf("  %s\n", defaultBranch))), nil
+		// If this commit is contained, the expected output is exactly "contains\n".
+		return bytes.Equal(stdout, []byte("contains\n")), nil
 	case err != nil && bytes.HasPrefix(stderr, []byte(fmt.Sprintf("error: no such commit %s\n", revision))):
 		return false, nil // No such commit error means this commit is not contained.
 	default:
@@ -101,7 +101,8 @@ func (git28) Contains(dir string, revision string, defaultBranch string) (bool, 
 }
 
 func (git28) RemoteContains(dir string, revision string) (bool, error) {
-	cmd := exec.Command("git", "branch", "--remotes", "--contains", revision, "origin/HEAD")
+	// --format=contains is just an arbitrary constant string that we look for in the output.
+	cmd := exec.Command("git", "for-each-ref", "--format=contains", "--count=1", "--contains", revision, "refs/remotes/origin/HEAD")
 	cmd.Dir = dir
 	env := osutil.Environ(os.Environ())
 	env.Set("LANG", "en_US.UTF-8")
@@ -110,8 +111,8 @@ func (git28) RemoteContains(dir string, revision string) (bool, error) {
 	stdout, stderr, err := dividedOutput(cmd)
 	switch {
 	case err == nil:
-		// If this commit is contained, the expected output is exactly "  origin/HEAD\n".
-		return bytes.Equal(stdout, []byte("  origin/HEAD\n")), nil
+		// If this commit is contained, the expected output is exactly "contains\n".
+		return bytes.Equal(stdout, []byte("contains\n")), nil
 	case err != nil && bytes.HasPrefix(stderr, []byte(fmt.Sprintf("error: no such commit %s\n", revision))):
 		return false, nil // No such commit error means this commit is not contained.
 	default:
