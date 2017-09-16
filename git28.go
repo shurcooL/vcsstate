@@ -100,9 +100,9 @@ func (git28) Contains(dir string, revision string, defaultBranch string) (bool, 
 	}
 }
 
-func (git28) RemoteContains(dir string, revision string) (bool, error) {
+func (git28) RemoteContains(dir string, revision string, defaultBranch string) (bool, error) {
 	// --format=contains is just an arbitrary constant string that we look for in the output.
-	cmd := exec.Command("git", "for-each-ref", "--format=contains", "--count=1", "--contains", revision, "refs/remotes/origin/HEAD")
+	cmd := exec.Command("git", "for-each-ref", "--format=contains", "--count=1", "--contains", revision, "refs/remotes/origin/"+defaultBranch)
 	cmd.Dir = dir
 	env := osutil.Environ(os.Environ())
 	env.Set("LANG", "en_US.UTF-8")

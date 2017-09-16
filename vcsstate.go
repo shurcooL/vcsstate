@@ -43,7 +43,7 @@ type VCS interface {
 
 	// RemoteContains reports whether the remote default branch contains
 	// the commit specified by revision.
-	RemoteContains(dir string, revision string) (bool, error)
+	RemoteContains(dir string, revision string, defaultBranch string) (bool, error)
 
 	// RemoteURL returns primary remote URL, as set in the local repository.
 	// If there's no remote, then ErrNoRemote is returned.

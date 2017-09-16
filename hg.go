@@ -100,7 +100,7 @@ func (hg) Contains(dir string, revision string, defaultBranch string) (bool, err
 	}
 }
 
-func (hg) RemoteContains(dir string, revision string) (bool, error) {
+func (hg) RemoteContains(dir string, revision string, defaultBranch string) (bool, error) {
 	return false, errors.New("not implemented for hg")
 }
 

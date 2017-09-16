@@ -96,8 +96,8 @@ func (git17) Contains(dir string, revision string, defaultBranch string) (bool, 
 	}
 }
 
-func (git17) RemoteContains(dir string, revision string) (bool, error) {
-	cmd := exec.Command("git", "branch", "-r", "--contains", revision, "origin/HEAD")
+func (git17) RemoteContains(dir string, revision string, defaultBranch string) (bool, error) {
+	cmd := exec.Command("git", "branch", "-r", "--contains", revision, "origin/"+defaultBranch)
 	cmd.Dir = dir
 	env := osutil.Environ(os.Environ())
 	env.Set("LANG", "en_US.UTF-8")
