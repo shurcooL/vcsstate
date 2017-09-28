@@ -85,8 +85,9 @@ func (git17) Contains(dir string, revision string, defaultBranch string) (bool, 
 	stdout, stderr, err := dividedOutput(cmd)
 	switch {
 	case err == nil:
-		// If this commit is contained, the expected output is exactly "* master\n"
-		// or "  master\n" if we're on another branch.
+		// If this commit is contained, the expected output is exactly "* {defaultBranch}\n"
+		// or "  {defaultBranch}\n" if we're on another branch,
+		// where {defaultBranch} is the value of defaultBranch.
 		return bytes.Equal(stdout, []byte(fmt.Sprintf("* %s\n", defaultBranch))) ||
 			bytes.Equal(stdout, []byte(fmt.Sprintf("  %s\n", defaultBranch))), nil
 	case err != nil && bytes.HasPrefix(stderr, []byte(fmt.Sprintf("error: no such commit %s\n", revision))):
@@ -106,10 +107,9 @@ func (git17) RemoteContains(dir string, revision string, defaultBranch string) (
 	stdout, stderr, err := dividedOutput(cmd)
 	switch {
 	case err == nil:
-		// If this commit is contained, the expected output is exactly "  origin/HEAD\n"
-		// or it has prefix "  origin/HEAD -> " (e.g., "  origin/HEAD -> origin/master\n").
-		return bytes.Equal(stdout, []byte("  origin/HEAD\n")) ||
-			bytes.HasPrefix(stdout, []byte("  origin/HEAD -> ")), nil
+		// If this commit is contained, the expected output is exactly "  origin/{defaultBranch}\n",
+		// where {defaultBranch} is the value of defaultBranch.
+		return bytes.Equal(stdout, []byte(fmt.Sprintf("  origin/%s\n", defaultBranch))), nil
 	case err != nil && bytes.HasPrefix(stderr, []byte(fmt.Sprintf("error: no such commit %s\n", revision))):
 		return false, nil // No such commit error means this commit is not contained.
 	default:
