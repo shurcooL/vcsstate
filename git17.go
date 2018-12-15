@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/shurcooL/go/osutil"
-	"github.com/shurcooL/go/trim"
 )
 
 // git17 implements git support using git version 1.7+ binary.
@@ -41,7 +40,7 @@ func (git17) Branch(dir string) (string, error) {
 		return "", err
 	}
 	// Since rev-parse is considered porcelain and may change, need to error-check its output.
-	return trim.LastNewline(string(out)), nil
+	return strings.TrimSuffix(string(out), "\n"), nil
 }
 
 func (git17) LocalRevision(dir string, defaultBranch string) (string, error) {
@@ -154,7 +153,7 @@ func (g git17) RemoteBranchAndRevision(dir string) (branch string, revision stri
 	case err != nil && bytes.HasPrefix(stderr, []byte("fatal: 'origin' does not appear to be a git repository\n")):
 		return "", "", ErrNoRemote
 	case err != nil:
-		return "", "", fmt.Errorf("%v: %s", err, trim.LastNewline(string(stderr)))
+		return "", "", fmt.Errorf("%v: %s", err, strings.TrimSuffix(string(stderr), "\n"))
 	}
 	_, revision, err = parseGit17LsRemote(stdout)
 	if err != nil {
@@ -179,7 +178,7 @@ func (git17) remoteBranch(dir string) (string, error) {
 
 	stdout, stderr, err := dividedOutput(cmd)
 	if err != nil {
-		return "", fmt.Errorf("%v: %s", err, trim.LastNewline(string(stderr)))
+		return "", fmt.Errorf("%v: %s", err, strings.TrimSuffix(string(stderr), "\n"))
 	}
 	const s = "\n  HEAD branch: "
 	i := bytes.Index(stdout, []byte(s))
@@ -218,7 +217,7 @@ func (remoteGit17) RemoteBranchAndRevision(remoteURL string) (branch string, rev
 
 	stdout, stderr, err := dividedOutput(cmd)
 	if err != nil {
-		return "", "", fmt.Errorf("%v: %s", err, trim.LastNewline(string(stderr)))
+		return "", "", fmt.Errorf("%v: %s", err, strings.TrimSuffix(string(stderr), "\n"))
 	}
 	return parseGit17LsRemote(stdout)
 }

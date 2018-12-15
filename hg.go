@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
-
-	"github.com/shurcooL/go/trim"
 )
 
 var _, hgBinaryError = exec.LookPath("hg")
@@ -46,7 +44,7 @@ func (hg) Branch(dir string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return trim.LastNewline(string(out)), nil
+	return strings.TrimSuffix(string(out), "\n"), nil
 }
 
 // hgRevisionLength is the length of a Mercurial revision hash.
@@ -112,7 +110,7 @@ func (hg) RemoteURL(dir string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return trim.LastNewline(string(out)), nil
+	return strings.TrimSuffix(string(out), "\n"), nil
 }
 
 func (hg) RemoteBranchAndRevision(dir string) (branch string, revision string, err error) {
@@ -127,7 +125,7 @@ func (hg) RemoteBranchAndRevision(dir string) (branch string, revision string, e
 		return "", "", err
 	}
 	// Get the last line of output.
-	lines := strings.Split(trim.LastNewline(string(out)), "\n") // lines will always contain at least one element.
+	lines := strings.Split(strings.TrimSuffix(string(out), "\n"), "\n") // lines will always contain at least one element.
 	return defaultBranch, lines[len(lines)-1], nil
 }
 
@@ -152,6 +150,6 @@ func (remoteHg) RemoteBranchAndRevision(remoteURL string) (branch string, revisi
 		return "", "", err
 	}
 	// Get the last line of output.
-	lines := strings.Split(trim.LastNewline(string(out)), "\n") // lines will always contain at least one element.
+	lines := strings.Split(strings.TrimSuffix(string(out), "\n"), "\n") // lines will always contain at least one element.
 	return defaultBranch, lines[len(lines)-1], nil
 }

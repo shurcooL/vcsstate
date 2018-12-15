@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/shurcooL/go/osutil"
-	"github.com/shurcooL/go/trim"
 )
 
 var gitBinaryVersion, gitBinaryError = exec.Command("git", "--version").Output()
@@ -43,7 +42,7 @@ func (git28) Branch(dir string) (string, error) {
 		return "", err
 	}
 	// Since rev-parse is considered porcelain and may change, need to error-check its output.
-	return trim.LastNewline(string(out)), nil
+	return strings.TrimSuffix(string(out), "\n"), nil
 }
 
 // gitRevisionLength is the length of a git revision hash.
@@ -138,7 +137,7 @@ func (git28) RemoteURL(dir string) (string, error) {
 	case err != nil:
 		return "", err
 	}
-	return trim.LastNewline(string(stdout)), nil
+	return strings.TrimSuffix(string(stdout), "\n"), nil
 }
 
 func (g git28) RemoteBranchAndRevision(dir string) (branch string, revision string, err error) {
@@ -158,14 +157,14 @@ func (g git28) RemoteBranchAndRevision(dir string) (branch string, revision stri
 	case err != nil && bytes.HasPrefix(stderr, []byte("fatal: 'origin' does not appear to be a git repository\n")):
 		return "", "", ErrNoRemote
 	case err != nil && bytes.HasPrefix(stderr, []byte("remote: Repository not found.\n")):
-		return "", "", NotFoundError{Err: fmt.Errorf("%v: %s", err, trim.LastNewline(string(stderr)))}
+		return "", "", NotFoundError{Err: fmt.Errorf("%v: %s", err, strings.TrimSuffix(string(stderr), "\n"))}
 	// TODO: Consider detecting connectivity errors specifically via "fatal: unable to access " prefix:
 	//
 	//       	(done with wi-fi turned off)
 	//       	gostatus $ git ls-remote --symref origin HEAD refs/heads/*
 	//       	fatal: unable to access 'https://github.com/shurcooL/gostatus/': Could not resolve host: github.com
 	case err != nil:
-		return "", "", fmt.Errorf("%v: %s", err, trim.LastNewline(string(stderr)))
+		return "", "", fmt.Errorf("%v: %s", err, strings.TrimSuffix(string(stderr), "\n"))
 	}
 	branch, revision, err = parseGit28LsRemote(stdout)
 	switch {
@@ -194,7 +193,7 @@ func (git28) remoteBranch(dir string) (string, error) {
 
 	stdout, stderr, err := dividedOutput(cmd)
 	if err != nil {
-		return "", fmt.Errorf("%v: %s", err, trim.LastNewline(string(stderr)))
+		return "", fmt.Errorf("%v: %s", err, strings.TrimSuffix(string(stderr), "\n"))
 	}
 	const s = "\n  HEAD branch: "
 	i := bytes.Index(stdout, []byte(s))
@@ -234,10 +233,10 @@ func (remoteGit28) RemoteBranchAndRevision(remoteURL string) (branch string, rev
 	stdout, stderr, err := dividedOutput(cmd)
 	switch {
 	case err != nil && bytes.HasPrefix(stderr, []byte("remote: Repository not found.\n")):
-		return "", "", NotFoundError{Err: fmt.Errorf("%v: %s", err, trim.LastNewline(string(stderr)))}
+		return "", "", NotFoundError{Err: fmt.Errorf("%v: %s", err, strings.TrimSuffix(string(stderr), "\n"))}
 	// TODO: Consider detecting connectivity errors specifically via "fatal: unable to access " prefix.
 	case err != nil:
-		return "", "", fmt.Errorf("%v: %s", err, trim.LastNewline(string(stderr)))
+		return "", "", fmt.Errorf("%v: %s", err, strings.TrimSuffix(string(stderr), "\n"))
 	}
 	branch, revision, err = parseGit28LsRemote(stdout)
 	switch {
